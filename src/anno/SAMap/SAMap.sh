@@ -8,15 +8,15 @@ mkdir -p ./SAMap/tmp/pep
 mkdir -p ./SAMap/tmp/maps
 mkdir -p ./SAMap/SAMap_result
 
-#!/bin/bash
-
 h5ad_list=${1:-"/data/work/anndata/At_stem.h5ad,/data/work/anndata/Sp_stem.h5ad"}
 pep_list=${2:-"/data/work/processed/At.pep,/data/work/processed/Sp.pep"}
 species_list=${3:-"At,Sp"}
 cluster_list=${4:-"celltype,metaneighbor"}
-do_rename_list=${5:-"no,no"}
-do_process_list=${6:-"yes,yes"}
-do_harmonization_list=${7:-"no,biosample"}
+subset_list=${5:-"1000,1000"}
+do_rename_list=${6:-"no,no"}
+do_process_list=${7:-"yes,yes"}
+do_harmonization_list=${8:-"no,biosample"}
+
 
 # 将逗号分隔的字符串转换为数组
 IFS=',' read -ra pep_arr <<< "$pep_list"
@@ -30,13 +30,13 @@ done
 sh ./SAMap/tmp/pairwise_blastp.sh
 
 python ./SAMap/tmp/SAMap_prepare.py $h5ad_list $species_list \
-$do_rename_list $do_process_list $do_harmonization_list
+$cluster_list $subset_list $do_rename_list $do_process_list $do_harmonization_list
 
 python ./SAMap/SAMap_result/SAMap_integration.py $species_list $cluster_list
 
 python ./SAMap/tmp/sanky_plot.py \
 --path ./SAMap/SAMap_result/MappingTable.csv \
---seq $species_list --slimit 0.7
+--seq $species_list --slimit 0.6
 
 # 计算运行时间（小时）
 end_time=$(date +%s)

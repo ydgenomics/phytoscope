@@ -46,3 +46,6 @@ source /opt/software/miniconda3/bin/conda/bin/activate
   - integration
   - scib
 - hclust -> 
+
+[] scanpy做marker的可视化
+[] seurat做找群特异marker
