@@ -47,5 +47,7 @@ source /opt/software/miniconda3/bin/conda/bin/activate
   - scib
 - hclust -> 
 
-[] scanpy做marker的可视化
-[] seurat做找群特异marker
+
+输入一个rds文件，即某植物某组织的单细胞转录组表达矩阵，多样本数据涉及对照处理或时序数据
+解决两个难点，一是难注释，植物缺少高质量的细胞类型marker基因，对于非模式物种就更稀缺了，高置信度的注释需要多证据支持，多证据多方法的注释如何统一也是一个问题；二是难对齐，不同的实验、样品可能细胞类型/状态存在差异，如何把共有的注释出来并保留真实的生物学差异。
+scanpy做marker的可视化；seurat做找群特异marker;
