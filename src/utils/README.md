@@ -19,3 +19,8 @@ Rscript /data/work/DEAs/allmarkers_conserved.R \
 - 可视化细胞类型特异marker基因
 - 可视化目标基因的表达
 - 可视化umap
+
+```
+$ head -n 1 /data/work/Feature/marker/jintian-marker.csv
+Tissue,CellType,GeneID,GeneName,MarkerType,References
+```

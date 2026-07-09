@@ -1,9 +1,12 @@
+# ref:
 # > MetaNeighbor计算批次的细胞群间的相似度(AUC)，hclust基于层次聚类进行批次间分群的统一并赋予标签
-# 260630
+# 260708
 # Rscript /data/work/MetaNeighbor/metaneighbor.R \
-# --input_rds /data/work/Anno/cell_type.rds \
-# --output_name Sp_anno --batch_key biosample --cluster_key cell_type \
-# --new_key metaneighbor2 --cut_value 5
+# --input_rds /data/work/seurat/preprocessed_seu.rds \
+# --output_name Sp --batch_key biosample --cluster_key CHOIR_clusters_0.05 \
+# --new_key metaneighbor --method "ward.D2" --cut_value 8
+
+# "ward.D2" "average" "complete"
 
 suppressPackageStartupMessages({
     library(MetaNeighbor)
@@ -65,6 +68,13 @@ option_list <- list(
     metavar = "character"
   ),
   make_option(
+    c("-m", "--method"), 
+    type = "character", 
+    default = "complete",
+    help = "hclust的聚类方法 [默认: complete]", 
+    metavar = "character"
+  ),
+  make_option(
     c("-v", "--cut_value"), 
     type = "numeric",               # 自动处理你前面要求的类型转换逻辑
     default = 6,
@@ -84,6 +94,7 @@ batch_key   <- opt$batch_key
 cluster_key <- opt$cluster_key
 new_key     <- opt$new_key
 assay       <- opt$assay
+method      <- opt$method
 cut_value   <- opt$cut_value
 
 # 5. 打印参数（用于在日志中确认参数是否正确输入）
@@ -210,9 +221,12 @@ get_meta_clusters <- function(auc_matrix, method = "complete", cut_value = 6) {
   list(dendro_cluster_df = dendro_cluster_df, hc = hc) # 同时返回聚类结果和 hclust 对象以供后续使用
 }
 
+# 记录脚本起始时间
+start_time <- proc.time()
+
 seu <- check_input(rds_files, batch_key, cluster_key)
 celltype_NV <- run_metaneighbor(seu, batch_key, cluster_key, output_name, assay)
-result <- get_meta_clusters(celltype_NV, method = "complete", cut_value = cut_value)
+result <- get_meta_clusters(celltype_NV, method = method, cut_value = cut_value)
 dendro_cluster_df <- result$dendro_cluster_df
 hc <- result$hc
 
@@ -233,7 +247,9 @@ seu@meta.data[[new_key]] <- unname(group2dendro[match(seu@meta.data[[combined_ke
 name <- paste0("auc_hclust_", as.character(cut_value))
 seu@meta.data[[name]] <- seu@meta.data[[new_key]]
 
-write.csv(celltype_NV, file = paste0(output_name, "_metaNeighbor.csv"), quote = FALSE, row.names = TRUE)
+# 按 hclust 树顺序重排矩阵，使 CSV 的行列顺序与热图一致
+celltype_NV_ordered <- celltype_NV[hc$order, hc$order]
+write.csv(celltype_NV_ordered, file = paste0(output_name, "_metaNeighbor.csv"), quote = FALSE, row.names = TRUE)
 saveRDS(seu, file = paste0(output_name, "_metaneighbor.rds"))
 
 # plot
@@ -350,3 +366,6 @@ p_bar <- ggplot(df, aes(x = .data[[batch_key]], y = Percentage, fill = .data[[ne
 
 print(p_bar)
 dev.off()
+
+elapsed <- (proc.time() - start_time)[3] / 3600
+cat("[TIME] 总运行时间:", round(elapsed, 3), "h\n")

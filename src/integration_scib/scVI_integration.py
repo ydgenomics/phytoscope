@@ -10,6 +10,7 @@ import pandas as pd
 import leidenalg
 from matplotlib.backends.backend_pdf import PdfPages
 import click
+import time
 
 @click.command()
 @click.argument("input_h5ad", type=click.Path(exists=True))
@@ -25,6 +26,7 @@ def run_scVI(input_h5ad, prefix, batch_key, key_list, cluster_name, resolution):
     out_umap = prefix + '_scVI_integrated.pdf'
     out_h5ad = prefix + '_scVI_integrated.h5ad'
     click.echo('Start scVI integration - use cpu mode')
+    start = time.time()
     # sc.set_figure_params(dpi_save=300, frameon=False, figsize=(10, 6))
     adata = sc.read_h5ad(input_h5ad)
     adata.var_names_make_unique()
@@ -86,6 +88,9 @@ def run_scVI(input_h5ad, prefix, batch_key, key_list, cluster_name, resolution):
     df.index.name = "cell_id"
     df.reset_index(inplace=True)
     df.to_csv(obsm_key+'_scVI_integrated.csv', index=False)
+    
+    elapsed_h = (time.time() - start) / 3600
+    click.echo(f"[TIME] 总运行时间: {elapsed_h:.3f} h")
 
 
 if __name__ == '__main__':

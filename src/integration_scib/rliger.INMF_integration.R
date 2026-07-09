@@ -46,6 +46,9 @@ key_list <- strsplit(opt$key_list, ",")[[1]]
 resolution <- opt$resolution
 cluster_name <- opt$cluster_name
 
+# 记录脚本起始时间
+start_time <- proc.time()
+
 out_rds <- paste0(prefix, '_rliger.INMF_integrated.rds')
 out_UMAP <- paste0(prefix, '_rliger.INMF_integrated.pdf')
 #
@@ -94,3 +97,6 @@ for (red_name in reduc_names) {
     red_file <- paste0(red_name, "_rliger.INMF_integrated.csv")
     write.csv(emb, red_file, row.names = FALSE)
 }
+
+elapsed <- (proc.time() - start_time)[3] / 3600
+cat("[TIME] 总运行时间:", round(elapsed, 3), "h\n")

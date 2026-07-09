@@ -1,13 +1,21 @@
+# CHOIR+singleR
+
 library(Seurat)
 
+args <- commandArgs(trailingOnly = TRUE)
 if(length(args) != 2){stop('
 ### Example
-input_rds="/data/work/MetaNeighbor/Sp_choir_metaneighbor.rds"
+cd /data/output
+input_rds="/data/work/Convert/at.hr.rds"
 umap_name="umap"
+Rscript /data/work/seurat/preprocess.R $input_rds $umap_name
 Rscript preprocess.R $input_rds $umap_name
 ')}
 input_rds <- args[1]
 umap_name <- args[2]
+
+# 记录脚本起始时间
+start_time <- proc.time()
 
 seu <- readRDS(input_rds)
 seu <- UpdateSeuratObject(seu)
@@ -56,6 +64,9 @@ if (!umap_name %in% names(seu@reductions)) {
 }
 
 print(seu)
-saveRDS(seu, "preprocessed_seu.rds")
+saveRDS(seu, basename(input_rds))
 
 message("[info] Check complete! RNA assay is ready.")
+
+elapsed <- (proc.time() - start_time)[3] / 3600
+cat("[TIME] 总运行时间:", round(elapsed, 3), "h\n")

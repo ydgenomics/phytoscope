@@ -8,6 +8,7 @@ import scanpy as sc
 import pandas
 import leidenalg
 import click
+import time
 
 @click.command()
 @click.argument("input_h5ad", type=click.Path(exists=True))
@@ -19,6 +20,7 @@ import click
 
 def run_unintegration(input_h5ad, prefix, batch_key, key_list, cluster_name, resolution):    
     key_list = key_list.split(",")
+    start = time.time()
     adata = sc.read_h5ad(input_h5ad)
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)
@@ -47,6 +49,9 @@ def run_unintegration(input_h5ad, prefix, batch_key, key_list, cluster_name, res
         plt.savefig(pdf, format='pdf', dpi=300, bbox_inches='tight')
         plt.close()
     adata.write(filename=prefix + '_unintegrated.h5ad',compression="gzip")
+    
+    elapsed_h = (time.time() - start) / 3600
+    click.echo(f"[TIME] 总运行时间: {elapsed_h:.3f} h")
 
 if __name__ == '__main__':
     run_unintegration()

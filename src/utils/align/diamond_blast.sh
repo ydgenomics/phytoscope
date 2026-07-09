@@ -21,8 +21,8 @@ else
     echo "Use diamond alignement protein sequences..."
     diamond makedb --in $fasta1 --db $name1
     diamond makedb --in $fasta2 --db $name2
-    diamond blastp --db $name2 -q $fasta1 -o "./result/blastp_"$name1"_vs_"$name2".txt"
-    diamond blastp --db $name1 -q $fasta2 -o "./result/blastp_"$name2"_vs_"$name1".txt"
+    diamond blastp --db $name2 -q $fasta1 -o "./result/blastp_"$name1"_vs_"$name2".txt" --evalue 1e-10
+    diamond blastp --db $name1 -q $fasta2 -o "./result/blastp_"$name2"_vs_"$name1".txt" --evalue 1e-10
   else
     echo "Use blastp alignement protein sequences..."
     makeblastdb -in $fasta1 -dbtype prot -out $name1
@@ -45,3 +45,4 @@ do
 done
 
 awk 'NR==FNR{a[$2"_"$1]=$1}NR!=FNR{if(a[$1"_"$2])print $1"\t"a[$1"_"$2]}' 0_unique.tsv 1_unique.tsv > reciprocal_best.txt
+rm -f header.tsv 0.txt 1.txt 0_filter.txt 1_filter.txt 0_unique.tsv 1_unique.tsv

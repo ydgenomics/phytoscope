@@ -8,9 +8,12 @@ library(optparse)
 
 
 if(FALSE){'
-Rscript /data/work/DEAs/allmarkers_conserved.R \
---rds /data/work/MetaNeighbor/jt_metaneighbor.rds --assay RNA \
---batch_key "biosample" --cluster_key metaneighbor_10 --only_pos yes
+input_rds="/data/work/MetaNeighbor/jt_metaneighbor.rds"
+batch_key="biosample"
+cluster_key="metaneighbor_10"
+Rscript ./phytoscope/src/utils/seurat/allmarkers_conserved.R \
+--rds $input_rds --assay RNA \
+--batch_key $batch_key --cluster_key $cluster_key --only_pos yes
 '}
 
 option_list <- list(
@@ -37,6 +40,9 @@ celltypes <- unique(seu@meta.data[[cluster_key]])
 # if (assay == "RNA") {
 #     seu <- NormalizeData(seu)
 # }
+
+# 记录脚本起始时间
+start_time <- proc.time()
 
 name <- basename(rds)
 
@@ -78,3 +84,6 @@ if (batch_key %in% colnames(seu@meta.data)) {
     print(head(conserved_markers))
     write.csv(conserved_markers, paste0("conserved_markers_", name, ".csv"), row.names = FALSE) # nolint
 }
+
+elapsed <- (proc.time() - start_time)[3] / 3600
+cat("[TIME] 总运行时间:", round(elapsed, 3), "h\n")
