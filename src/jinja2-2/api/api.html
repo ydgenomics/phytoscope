@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Plant-scOmics 自动化文献综述智能体 (Kimi 官方直连版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #f4f6f8; color: #333; }
+        .app-container { display: flex; max-width: 1400px; margin: 30px auto; gap: 20px; padding: 0 20px; height: 85vh; }
+        .control-panel { flex: 1; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 25px; display: flex; flex-direction: column; gap: 20px; }
+        .display-panel { flex: 2; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 30px; overflow-y: auto; display: flex; flex-direction: column; }
+        h2, h3 { margin-top: 0; color: #2c3e50; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-weight: bold; font-size: 14px; color: #4a5568; }
+        input[type="text"], input[type="password"] { padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 15px; }
+        .btn-submit { background: #319795; color: white; border: none; padding: 14px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .btn-submit:hover { background: #2c7a7b; }
+        .loading { display: none; color: #319795; font-weight: bold; text-align: center; padding: 20px; border: 1px dashed #319795; border-radius: 6px; background: #e6fffa; }
+        
+        /* 学术级 Markdown 报告美化 */
+        #review-output h1 { font-size: 22px; border-bottom: 2px solid #319795; padding-bottom: 8px; color: #2c3e50; margin-top: 25px; }
+        #review-output h2 { font-size: 18px; margin-top: 20px; color: #2d3748; border-left: 4px solid #319795; padding-left: 8px; }
+        #review-output p { line-height: 1.7; color: #4a5568; font-size: 15px; text-indent: 2em; margin-bottom: 12px; }
+        #review-output li { line-height: 1.6; margin-bottom: 8px; color: #4a5568; font-size: 15px; }
+        #review-output strong { color: #1a202c; }
+        #review-output code { background: #edf2f7; padding: 2px 5px; border-radius: 4px; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+    <div style="background: #2c3e50; color:white; padding: 15px 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h2 style="margin:0;">🌿 Plant-scOmics Narrator: 文献综述大模型 Agent (Local Server)</h2>
+    </div>
+
+    <div class="app-container">
+        <div class="control-panel">
+            <h3>🛠️ 检索配置</h3>
+            
+            <div class="form-group">
+                <label>🔑 Kimi 官方 API Key</label>
+                <input type="password" id="api-key" placeholder="输入以 sk- 开头的 Kimi 密钥...">
+            </div>
+
+            <div class="form-group">
+                <label>🌱 植物学名 (Species Name)</label>
+                <input type="text" id="plant-species" placeholder="例如: Medicago truncatula" value="Medicago truncatula">
+            </div>
+
+            <div class="form-group">
+                <label>🔬 研究器官/组织 (Tissue/Organ)</label>
+                <input type="text" id="plant-tissue" placeholder="例如: Pulvinus" value="Pulvinus">
+            </div>
+
+            <button class="btn-submit" onclick="generateReview()">🚀 启动联网检索并生成综述</button>
+            
+            <div id="loading-status" class="loading">
+                🔄 Kimi 正在执行网络检索并撰写综述中...<br>
+                <small style="font-weight: normal; color: #666;">(由于实时调用多篇文献抓取，预计需要 20-40 秒)</small>
+            </div>
+        </div>
+
+        <div class="display-panel">
+            <h3>📄 自动化文献综述反馈画布</h3>
+            <hr style="border:0; border-top:1px solid #e2e8f0; margin-bottom:15px;">
+            <div id="review-output" style="flex:1;">
+                <p style="color:#aaa; text-align:center; margin-top:100px; text-indent: 0;">本地服务器连接已激活。请在左侧输入配置并启动。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function generateReview() {
+            const apiKey = document.getElementById('api-key').value.trim();
+            const species = document.getElementById('plant-species').value.trim();
+            const tissue = document.getElementById('plant-tissue').value.trim();
+            
+            const loadingStatus = document.getElementById('loading-status');
+            const outputDiv = document.getElementById('review-output');
+
+            if (!apiKey || !species || !tissue) {
+                alert("请完整填写 Kimi API Key 及检索参数！");
+                return;
+            }
+
+            loadingStatus.style.display = "block";
+            outputDiv.innerHTML = `<p style="color:#666; text-align:center; margin-top:100px; text-indent: 0;">🔍 本地沙箱环境安全：正在直连 Kimi 官方接口进行文献多网检索...</p>`;
+
+            // 1. 系统提示词配置
+            const systemPrompt = "你是一个精通植物基因组学、单细胞多组学（scRNA-seq）以及发育生物学的资深人工智能科学家。你的任务是根据用户输入的【植物物种】和【研究组织/器官】，利用你的联网搜索能力，检索该领域最新的核心学术文献，并撰写一份结构严谨、引用详实的学术文献综述。综述必须包含以下结构：1. 💡 科学背景与重要性 (Biological Significance)；2. 🔬 传统大体解剖学与经典发育机制 (Anatomical & Developmental Insights)；3. 🧬 单细胞与空间组学最新进展 (Recent single-cell & spatial omics breakthroughs)；4. ⚠️ 当前研究的关键空白与未来展望 (Knowledge Gaps & Future Directions)。要求：语言需具备高度学术性，提及关键结论时需尽可能说明对应的主要研究团队或年份。";
+            const userPrompt = `请求生成的植物物种：${species}\n研究的组织/器官：${tissue}\n\n请开始进行网络检索并撰写。`;
+
+            // 2. 💡 纯正的 Kimi 官方原装网关地址（不再套用任何公共中转，100%稳定安全）
+            const KIMI_URL = "https://api.moonshot.cn/v1/chat/completions"; 
+            
+            try {
+                const response = await fetch(KIMI_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "moonshot-v1-auto", // 激活 Kimi 的智能联网检索模型
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user", content: userPrompt }
+                        ],
+                        temperature: 0.3
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Kimi 网关异常响应，状态码: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error.message || "API 内部错误");
+                }
+                
+                const markdownText = data.choices[0].message.content;
+
+                // 3. 将 markdown 代码块一键化为学术规范的网页元素
+                outputDiv.innerHTML = marked.parse(markdownText);
+
+            } catch (error) {
+                console.error(error);
+                outputDiv.innerHTML = `
+                    <div style="color:#e53e3e; padding:20px; border:1px solid #fed7d7; background:#fff5f5; border-radius:6px; margin-top:50px;">
+                        <p style="font-weight:bold; margin-top:0; text-indent:0;">❌ 检索流中断</p>
+                        <ul style="margin-bottom:0; padding-left:20px;">
+                            <li>请核对输入的 <code>${apiKey.substring(0,6)}...</code> 密钥是否存在误输入。</li>
+                            <li>部分学术网络/代理环境可能会掐断本机的外部 https 链接，可以尝试切换网络环境。</li>
+                            <li>错误报错: <code>${error.message}</code></li>
+                        </ul>
+                    </div>`;
+            } finally {
+                loadingStatus.style.display = "none";
+            }
+        }
+    </script>
+</body>
+</html>

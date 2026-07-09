@@ -1,0 +1,27 @@
+<!-- ================================================================== -->
+<!-- MetaNeighbor — Plotly 交互热图                                          -->
+<!-- ================================================================== -->
+<section class="section-container" id="section-metaneighbor">
+    <h2 class="section-title">🧬 3. MetaNeighbor Analysis</h2>
+    <p class="section-subtitle">细胞类型跨数据集可重复性 (AUROC)。鼠标悬停查看精确值。</p>
+
+    {% if metaneighbor.has_data %}
+    <div id="metaneighbor-plot" class="plotly-container" style="display:flex;justify-content:center;"></div>
+    {% else %}
+    <div class="placeholder-note">⚠️ 未找到 MetaNeighbor 结果（metaneighbor/*metaNeighbor*.csv）。</div>
+    {% endif %}
+</section>
+
+{% if metaneighbor.has_data %}
+<script>
+(function() {
+    var graphData = {{ metaneighbor.heatmap_json | safe }};
+    if (graphData && graphData.data && graphData.data.length > 0) {
+        Plotly.newPlot('metaneighbor-plot', graphData.data, graphData.layout, {
+            responsive: true,
+            displayModeBar: true
+        });
+    }
+})();
+</script>
+{% endif %}

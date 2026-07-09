@@ -8,7 +8,12 @@ library(Seurat)
 library(SingleCellExperiment)
 library(scater)
 library(SingleR)
+library(dplyr)
+library(tidyr)  # pivot_wider 需要 tidyr
+library(tibble)
+library(pheatmap)
 library(optparse)
+library(ggplot2)
 
 option_list <- list(
     make_option(
@@ -106,50 +111,110 @@ run_singler <- function(query_seu, ref_sce, prefix) {
         query_seu$singler0 <- query_seu$singler
     }
     query_seu$singler <- pred$labels
+    query_seu$singler_pruned <- pred$pruned.labels
     return(query_seu)
 }
 
 ref_sce <- create_ref_singler(input_ref_rds, ref_cluster_key)
 prefix <- sub("\\.rds$", "", basename(input_query_rds))
 seu <- run_singler(query_seu, ref_sce, prefix)
-p <- DimPlot(seu, reduction = umap_name, group.by = 'singler', label = TRUE, repel = TRUE)
-pdf(paste0(prefix, "_singler.pdf"), width = 10, height = 8)
-print(p)
+
+# === Cluster-level identity by majority voting ===
+# Replace NA in pruned.labels with "Unknown"
+seu$singler_pruned[is.na(seu$singler_pruned)] <- "Unknown"
+
+# Build count matrix (cell_type × cluster)
+vote_df <- data.frame(
+  cluster  = seu@meta.data[[query_cluster_key]],
+  celltype = seu$singler_pruned,
+  stringsAsFactors = FALSE
+)
+
+count_matrix <- vote_df %>%
+  dplyr::count(cluster, celltype) %>%
+  pivot_wider(names_from = cluster, values_from = n, values_fill = 0) %>%
+  column_to_rownames("celltype") %>%
+  as.matrix()
+
+# Percentage per cluster (each cluster sums to 100%)
+prob_matrix <- sweep(count_matrix, 2, colSums(count_matrix), `/`) * 100
+rownames(prob_matrix) <- rownames(count_matrix)
+
+# Save probability matrix
+write.csv(prob_matrix,
+  paste0(prefix, "_singler_prob_clusters.csv"),
+  row.names = TRUE)
+
+# Determine cluster identity with purity threshold (Scheme A)
+purity_threshold <- 30
+cluster_identity <- data.frame(
+  cluster = colnames(prob_matrix),
+  singler = rownames(prob_matrix)[apply(prob_matrix, 2, which.max)],
+  prob    = apply(prob_matrix, 2, max),
+  purity_check = "pass",
+  stringsAsFactors = FALSE
+)
+rownames(cluster_identity) <- NULL
+
+# Apply purity threshold
+for (i in 1:nrow(cluster_identity)) {
+  cl <- cluster_identity$cluster[i]
+  top_prob <- cluster_identity$prob[i]
+
+  if (top_prob > purity_threshold) {
+    # High confidence (>50%): keep the label
+    cluster_identity$purity_check[i] <- "pass"
+  } else {
+    # Low confidence: mark as "Unknown"
+    cluster_identity$singler[i] <- "Unknown"
+    cluster_identity$prob[i] <- NA
+    cluster_identity$purity_check[i] <- "fail"
+  }
+}
+
+# Write cluster-level identity to Seurat metadata
+seu$singler <- NA_character_
+for (i in 1:nrow(cluster_identity)) {
+  cl <- cluster_identity$cluster[i]
+  ct <- cluster_identity$singler[i]
+  seu$singler[seu@meta.data[[query_cluster_key]] == cl] <- ct
+}
+
+# Print and warn about low-confidence clusters
+print(cluster_identity)
+low_confidence <- cluster_identity[cluster_identity$purity_check == "fail", ]
+if (nrow(low_confidence) > 0) {
+  message(sprintf(
+    "[warning] %d clusters have no majority (> %.0f%%), marked as 'Unknown':",
+    nrow(low_confidence), purity_threshold))
+  print(low_confidence[, c("cluster", "singler")])
+  message("[suggestion] Consider sub-clustering these clusters for better resolution.")
+}
+
+write.csv(cluster_identity,
+  paste0(prefix, "_singler_cluster_identity.csv"),
+  row.names = FALSE)
+
+
+pdf(paste0(prefix, "_singler.pdf"))
+DimPlot(seu, reduction = umap_name, group.by = 'singler', shuffle = TRUE, label = TRUE) + NoLegend()
 dev.off()
-              
-# The heatmap of component
-df <- seu@meta.data[c(query_cluster_key, "singler")]
-colnames(df) <- c("seurat_clusters", "singler")
-              
-library(dplyr)
-library(tidyr)
-library(tibble)
 
-percentage_df <- df %>%
-  dplyr::count(seurat_clusters, singler) %>%
-  group_by(seurat_clusters) %>%
-  mutate(pct = as.numeric(n / sum(n) * 100)) %>%  # 确保pct是数值型
-  select(-n) %>%
-  pivot_wider(
-    names_from = singler,
-    values_from = pct,
-    values_fill = 0
-  ) %>%
-  column_to_rownames("seurat_clusters")
+ggsave(paste0(prefix, "_singler.png"),
+       plot = DimPlot(seu, reduction = umap_name, group.by = 'singler', shuffle = TRUE, label = TRUE) + NoLegend(),
+       dpi = 300)
 
-heatmap_matrix <- as.matrix(percentage_df)
-
-library(pheatmap)
-pdf(paste0(prefix, "_component.pdf"), width = length(unique(seu$singler))/2, height = length(unique(seu$singler))/2)
-pheatmap(heatmap_matrix,
+# === Component heatmap (from prob_matrix) ===
+n_types <- nrow(prob_matrix)
+pdf(paste0(prefix, "_component.pdf"), width = n_types / 2, height = n_types / 2)
+pheatmap(prob_matrix,
          cluster_rows = TRUE,
          cluster_cols = TRUE,
          display_numbers = TRUE,
          number_format = "%.1f",
          number_color = "black",
          color = colorRampPalette(c("white", "yellow", "red"))(100),
-         main = "Cluster Component Heatmap")
-
+         main = "Cluster Component Heatmap (pruned)")
 dev.off()
               
 # Save the annotated query dataset

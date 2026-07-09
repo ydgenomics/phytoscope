@@ -63,8 +63,44 @@ samap = sm.samap
 
 D, MappingTable = get_mapping_scores(sm, cluster_key, n_top = 0)
 
-# D.to_csv("celltype_relationship.csv")
+# Save full MappingTable
 MappingTable.to_csv("./SAMap/SAMap_result/MappingTable.csv")
+
+# === Process MappingTable: cross-species cluster identity ===
+if len(species) == 2:
+    # Two-species mode: rows = species[0] clusters, columns = species[1] clusters
+    row_prefix = species[0] + '_'
+    col_prefix = species[1] + '_'
+    row_mask = [str(idx).startswith(row_prefix) for idx in MappingTable.index]
+    col_mask = [str(c).startswith(col_prefix) for c in MappingTable.columns]
+    mt_cross = MappingTable.loc[row_mask, col_mask]
+    # Strip species prefix from names
+    mt_cross.index = [x.split('_', 1)[1] if '_' in x else x for x in mt_cross.index]
+    mt_cross.columns = [x.split('_', 1)[1] if '_' in x else x for x in mt_cross.columns]
+
+    # Save cleaned cross-species matrix
+    mt_cross.to_csv("./SAMap/SAMap_result/MappingTable_cross.csv")
+
+    # For each query cluster, find the best reference cell type
+    cluster_identity = []
+    for col in mt_cross.columns:
+        best_idx = mt_cross[col].idxmax()
+        best_score = mt_cross[col].max()
+        purity = "pass" if best_score > 0.5 else "fail"
+        label = best_idx if best_score > 0.5 else "Unknown"
+        cluster_identity.append({
+            "cluster": col,
+            "SAMap": label,
+            "score": best_score if best_score > 0.5 else pd.NA,
+            "purity_check": purity
+        })
+
+    cluster_identity_df = pd.DataFrame(cluster_identity)
+    cluster_identity_df.to_csv("./SAMap/SAMap_result/MappingTable_cluster_identity.csv",
+                                index=False)
+    print(cluster_identity_df)
+else:
+    print(f"[info] {len(species)} species detected, skipping cross-species cluster identity parsing.")
 
 #sankey_plot(MappingTable, align_thr=0.05, species_order = sample[0].values)
 sm.scatter()

@@ -16,6 +16,7 @@ suppressPackageStartupMessages({
   library(scRNAseq)
   library(Seurat)
   library(dplyr)
+  library(ggplot2)
 })
 
 # setwd('/data/work/CHOIR')
@@ -103,7 +104,7 @@ if (!skip_choir && tolower(batch_key) != "null" && batch_key %in% colnames(objec
 # ---------------------------------------------------------------------------
 # 4. 执行 CHOIR 聚类
 # ---------------------------------------------------------------------------
-run_choir_on_object <- function(obj, suffix = "") {
+run_choir_on_object <- function(obj, cluster_key, suffix = "") {
   obj <- NormalizeData(obj, verbose = FALSE)
   n_cores <- min(8, parallel::detectCores())
   cat("[INFO] 运行 CHOIR (alpha=", alpha, ", n_cores=", n_cores, ", seed=", random_seed, ")\n")
@@ -122,6 +123,32 @@ run_choir_on_object <- function(obj, suffix = "") {
       colnames(obj@meta.data)[colnames(obj@meta.data) == col] <- paste0(col, suffix)
     }
   }
+  
+  # 将 CHOIR 聚类结果赋值给 cluster_key
+  choir_cluster_col <- grep("^CHOIR_clusters$", colnames(obj@meta.data), value = TRUE)
+  if (length(choir_cluster_col) == 0) {
+    choir_cluster_col <- grep("^CHOIR_", colnames(obj@meta.data), value = TRUE)[1]
+  }
+  if (length(choir_cluster_col) > 0) {
+    obj@meta.data[[cluster_key]] <- obj@meta.data[[choir_cluster_col]]
+    cat("[INFO] CHOIR 聚类结果已赋值至:", cluster_key, "(来源列:", choir_cluster_col, ")\n")
+  } else {
+    cat("[WARN] 未找到 CHOIR 聚类列，无法赋值给:", cluster_key, "\n")
+  }
+  
+  # 保存 DimPlot PNG（分批时带 suffix 防覆盖）
+  if ("CHOIR_P0_reduction" %in% names(obj@reductions)) {
+    png_suffix <- if (suffix != "") paste0("_", suffix) else ""
+    png_file <- paste0("CHOIR_", cluster_key, png_suffix, "_DimPlot.png")
+    obj <- runCHOIRumap(obj, reduction = "P0_reduction")
+    p <- DimPlot(obj, reduction = "CHOIR_P0_reduction_UMAP", group.by = cluster_key, 
+                 shuffle = TRUE, label = TRUE) + NoLegend()
+    ggsave(png_file, p, width = 10, height = 8, dpi = 300)
+    cat("[INFO] DimPlot 已保存至:", png_file, "\n")
+  } else {
+    cat("[WARN] 未找到 CHOIR_P0_reduction，跳过 DimPlot\n")
+  }
+  
   return(obj)
 }
 
@@ -142,9 +169,8 @@ if (do_split) {
   choir_list <- list()
   for (b in names(split_list)) {
     cat("[INFO] 处理批次:", b, "-", ncol(split_list[[b]]), "cells\n")
-    # 取消suffix
-    choir_list[[b]] <- run_choir_on_object(split_list[[b]], suffix = "")
-    # choir_list[[b]] <- run_choir_on_object(split_list[[b]], suffix = paste0(".", b))
+    choir_list[[b]] <- run_choir_on_object(split_list[[b]], cluster_key, suffix = b)
+    # choir_list[[b]] <- run_choir_on_object(split_list[[b]], cluster_key, suffix = paste0(".", b))
   }
   
   cat("[INFO] 合并各批次结果...\n")
@@ -163,7 +189,7 @@ if (do_split) {
   
 } else {
   # 单个批次，直接跑 CHOIR
-  object_out <- run_choir_on_object(object)
+  object_out <- run_choir_on_object(object, cluster_key)
   saveRDS(object_out, basename(input_rds))
   cat("[INFO] 保存 CHOIR 结果至:", basename(input_rds), "\n")
   elapsed <- (proc.time() - start_time)[3] / 3600

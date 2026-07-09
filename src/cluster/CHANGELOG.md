@@ -4,6 +4,28 @@
 
 ---
 
+## [v0.3] — 2026-07-10
+
+### 变更内容
+
+CHOIR 聚类完成后自动将结果赋值给 `cluster_key`，并输出 DimPlot 可视化 PNG。
+
+### 新增功能
+
+- **聚类结果映射**：运行 CHOIR 后，自动将 `CHOIR_clusters` 列的值赋给 `obj@meta.data[[cluster_key]]`，使下游流程可直接按用户指定的列名使用聚类结果
+- **DimPlot 自动输出**：使用 `CHOIR_P0_reduction` 降维结果，按 `cluster_key` 分组生成 DimPlot 并保存为 PNG（`ggsave`，10×8，150 dpi）
+- **分批 PNG 防覆盖**：多 batch 模式下，每个批次的 PNG 文件名带 `_<batch>` 后缀，避免互相覆盖
+
+### 文件输出
+
+| 输出文件 | 说明 |
+| --- | --- |
+| `<input_rds>` | 含 CHOIR 聚类结果及 `cluster_key` 列的 Seurat RDS |
+| `CHOIR_<cluster_key>_DimPlot.png` | 单批次 / 合并后的 DimPlot |
+| `CHOIR_<cluster_key>_<batch>_DimPlot.png` | 多批次模式下各批次的独立 DimPlot |
+
+---
+
 ## [v0.2] — 2026-07-09
 
 ### 变更内容

@@ -1,0 +1,103 @@
+<!-- ================================================================== -->
+<!-- Enrich — Tabs 切换各 cluster 富集图 + DataTables 表格                   -->
+<!-- ================================================================== -->
+<section class="section-container" id="section-enrich">
+    <h2 class="section-title">🔬 5. Enrichment Analysis</h2>
+    <p class="section-subtitle">GO/KEGG 富集分析结果。切换 cluster 查看对应富集图，表格支持搜索导出。</p>
+
+    {% if enrich.has_data %}
+        {% if enrich.cluster_images %}
+        <div class="tabs-section">
+            <div class="tab-buttons">
+                {% for img in enrich.cluster_images %}
+                <button class="tab-btn {% if loop.first %}active{% endif %}"
+                        onclick="switchEnrichTab(event, 'enrich-content-{{ loop.index0 }}')">
+                    {{ img.name }}
+                </button>
+                {% endfor %}
+            </div>
+
+            {% for img in enrich.cluster_images %}
+            <div id="enrich-content-{{ loop.index0 }}"
+                 class="tab-content {% if loop.first %}active{% endif %}" style="text-align:center;">
+                <img class="display-img" src="data:image/png;base64,{{ img.b64_data }}"
+                     alt="{{ img.name }}" style="max-height:600px;">
+                <br>
+                <a class="download-btn" href="data:image/png;base64,{{ img.b64_data }}"
+                   download="{{ img.filename }}">📥 下载 {{ img.name }} PNG</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if enrich.table_headers %}
+        <hr style="border:0;border-top:1px solid #eef0f2;margin:30px 0;">
+        <h4 style="color:#2c3e50;">📊 富集数据明细表</h4>
+        <table id="enrichTable" class="display cell-border hover stripe" style="width:100%;">
+            <thead>
+                <tr>
+                    {% for h in enrich.table_headers %}<th>{{ h }}</th>{% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in enrich.table_rows %}
+                <tr>
+                    {% for cell in row %}
+                        {% if cell|length > 30 %}
+                        <td><div class="scrollable-cell" title="{{ cell }}">{{ cell }}</div></td>
+                        {% else %}
+                        <td>{{ cell }}</td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    {% else %}
+    <div class="placeholder-note">⚠️ 未找到富集分析结果（anno/enrich/）。</div>
+    {% endif %}
+</section>
+
+<script>
+function switchEnrichTab(evt, contentId) {
+    document.querySelectorAll('#section-enrich .tab-content').forEach(tc => tc.classList.remove('active'));
+    document.querySelectorAll('#section-enrich .tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(contentId).classList.add('active');
+    evt.currentTarget.classList.add('active');
+}
+</script>
+
+{% if enrich.table_headers %}
+<script>
+$(document).ready(function() {
+    $('#enrichTable').DataTable({
+        pageLength: 15,
+        lengthMenu: [10, 15, 30, 50, 100, -1],
+        scrollX: true,
+        dom: 'Bfrtip',
+        buttons: [{
+            extend: 'csvHtml5',
+            text: '📊 导出 CSV',
+            filename: 'enrich_results_exported',
+            exportOptions: {
+                format: {
+                    body: function(data, row, col, node) {
+                        var sc = $(node).find('.scrollable-cell');
+                        if (sc.length) return sc.attr('title') || data;
+                        return data;
+                    }
+                }
+            }
+        }],
+        language: {
+            lengthMenu: '每页 _MENU_ 条',
+            zeroRecords: '未找到匹配条目',
+            info: '第 _START_ ~ _END_ 条，共 _TOTAL_ 条',
+            search: '🔍 搜索:',
+            paginate: { previous: '上一页', next: '下一页' }
+        }
+    });
+});
+</script>
+{% endif %}

@@ -3,16 +3,20 @@
 library(Seurat)
 
 args <- commandArgs(trailingOnly = TRUE)
-if(length(args) != 2){stop('
+if(length(args) < 2 || length(args) > 3){stop('
 ### Example
 cd /data/output
 input_rds="/data/work/Convert/at.hr.rds"
 umap_name="umap"
+# Without external PCA CSV:
 Rscript /data/work/seurat/preprocess.R $input_rds $umap_name
-Rscript preprocess.R $input_rds $umap_name
+# With external PCA CSV (e.g., harmony embeddings):
+pca_csv="/data/work/phytoscope/data/output/.../harmony_SCTransform.harmony_integrated.csv"
+Rscript /data/work/seurat/preprocess.R $input_rds $umap_name $pca_csv
 ')}
 input_rds <- args[1]
 umap_name <- args[2]
+pca_csv <- if (length(args) == 3) args[3] else NULL
 
 # 记录脚本起始时间
 start_time <- proc.time()
@@ -54,7 +58,31 @@ if (!"scale.data" %in% Layers(seu, assay = "RNA")) {
     seu <- ScaleData(seu, features = VariableFeatures(seu))
 }
 
-if (!umap_name %in% names(seu@reductions)) {
+if (!is.null(pca_csv)) {
+    # PCI CSV 优先级最高：无论 UMAP 是否已存在，都使用外部嵌入重新计算
+    message(sprintf("[info] Reading external PCA embedding from: %s", pca_csv))
+    pca_mat <- as.matrix(read.csv(pca_csv, row.names = 1))
+    message(sprintf("[info] PCA matrix dim: %d cells x %d dims", nrow(pca_mat), ncol(pca_mat)))
+
+    # Ensure cell order matches Seurat object
+    common_cells <- intersect(rownames(pca_mat), colnames(seu))
+    message(sprintf("[info] Common cells: %d / %d", length(common_cells), ncol(seu)))
+    pca_mat <- pca_mat[common_cells, , drop = FALSE]
+
+    # Create DimReduc object
+    reduction_key <- paste0("customPCA_")
+    seu[[reduction_key]] <- CreateDimReducObject(
+        embeddings = pca_mat,
+        loadings   = matrix(0, 0, ncol(pca_mat)),
+        assay      = "RNA",
+        key        = reduction_key
+    )
+    message(sprintf("[info] Created DimReduc '%s' with %d dims. Running FindNeighbors and UMAP...",
+                    reduction_key, ncol(pca_mat)))
+    seu <- FindNeighbors(seu, dims = 1:ncol(pca_mat), reduction = reduction_key, verbose = FALSE)
+    seu <- RunUMAP(seu, dims = 1:ncol(pca_mat), reduction = reduction_key,
+                   reduction.name = umap_name, verbose = FALSE)
+} else if (!umap_name %in% names(seu@reductions)) {
     message("[info] The Seurat object does not contain a UMAP reduction. Running PCA, FindNeighbors, and UMAP...")
     seu <- RunPCA(seu, features = VariableFeatures(seu), npcs = 40, verbose = FALSE)
     seu <- FindNeighbors(seu, dims = 1:30, verbose = FALSE)

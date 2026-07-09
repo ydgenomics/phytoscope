@@ -81,12 +81,18 @@ saveRDS(obj, file = out_rds)
 key_list <- c(key_list, cluster_name)
 
 pdf(out_UMAP)
-DimPlot(obj, reduction = "umap", group.by = batch_key)
-for (i in key_list){
-    p <- DimPlot(obj, reduction = "umap", group.by = i, shuffle = TRUE, label = TRUE)
+for (i in c(batch_key, key_list)){
+    p <- DimPlot(obj, reduction = "umap", group.by = i, shuffle = TRUE, label = TRUE) + NoLegend()
     print(p)
 }
 dev.off()
+
+# 保存各分组的 UMAP 为 PNG
+method_tag <- gsub(paste0("^", prefix, "_(.+)_integrated\\.rds$"), "\\1", out_rds)
+for (i in c(batch_key, key_list)) {
+    p <- DimPlot(obj, reduction = "umap", group.by = i, shuffle = TRUE, label = TRUE) + NoLegend()
+    ggsave(paste0(method_tag, "_", i, ".png"), plot = p, width = 10, height = 8, dpi = 300)
+}
 
 elapsed <- (proc.time() - start_time)[3] / 3600
 cat("[TIME] 总运行时间:", round(elapsed, 3), "h\n")

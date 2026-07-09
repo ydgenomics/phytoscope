@@ -1,0 +1,202 @@
+<!-- ================================================================== -->
+<!-- Interpretation — AI 解读（Kimi API 流式输出）                            -->
+<!-- ================================================================== -->
+<section class="section-container" id="section-interpretation">
+    <h2 class="section-title">💡 9. AI Interpretation</h2>
+    <p class="section-subtitle">基于以上所有分析结果，调用 Kimi API 自动生成生物学结论解读（需联网 + API Key）。</p>
+
+    <div class="row">
+        <div class="col-lg-5">
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-key"></i> API 设置</span>
+                </div>
+                <div class="card-body">
+                    <label class="form-label fw-bold">Kimi API Key</label>
+                    <input type="password" class="form-control" id="ai-api-key"
+                           placeholder="sk-... 输入后自动保存到浏览器">
+                    <div class="form-text">Key 仅存储在浏览器本地，不会上传。</div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-robot"></i> 系统提示词</span>
+                    <button class="btn btn-sm btn-outline-secondary" type="button"
+                            onclick="var el=document.getElementById('systemPromptArea');el.style.display=el.style.display==='none'?'block':'none';">
+                        ✏️ 编辑
+                    </button>
+                </div>
+                <div id="systemPromptArea" style="display:none;">
+                    <div class="card-body">
+                        <textarea class="form-control" id="ai-system-prompt" rows="12" style="font-size:13px;">{{ default_system_prompt }}</textarea>
+                    </div>
+                </div>
+            </div>
+            <button id="btn-ai-interpret" class="download-btn"
+                    style="background:linear-gradient(135deg,#6f42c1,#0d6efd);font-size:15px;padding:14px 30px;width:100%;"
+                    onclick="runAIInterpretation()">
+                🤖 生成 AI 解读
+            </button>
+            <div id="ai-status" class="mt-3" style="display:none;text-align:center;">
+                <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+                <span id="ai-status-text">AI 正在分析数据...</span>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header">
+                    <span><i class="bi bi-chat-square-text"></i> AI 解读结果</span>
+                </div>
+                <div class="card-body">
+                    <div id="ai-result"
+                         style="min-height:300px;white-space:pre-wrap;font-size:14px;line-height:1.8;color:#555;">
+                        <p class="text-center text-muted py-5">
+                            <i class="bi bi-robot" style="display:block;font-size:3rem;margin-bottom:1rem;"></i>
+                            在左侧设置 Kimi API Key，然后点击「生成 AI 解读」<br>
+                            <small>系统将综合分析聚类、注释、富集等模块结果</small>
+                        </p>
+                    </div>
+                </div>
+                <div class="card-footer text-end">
+                    <small class="text-muted">AI 生成内容仅供参考，建议结合生物学知识验证</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# 将所有分析数据注入为 JS 变量，供 AI prompt 使用 #}
+<script>
+// API Key 持久化
+(function() {
+    var saved = localStorage.getItem('phytoscope-api-key');
+    if (saved) document.getElementById('ai-api-key').value = saved;
+    document.getElementById('ai-api-key').addEventListener('change', function() {
+        localStorage.setItem('phytoscope-api-key', this.value);
+    });
+})();
+
+// 注入分析数据（用于构建 AI prompt）
+var phytoData = {
+    project: {{ project | tojson }},
+    cluster: {
+        conditions: {{ cluster.conditions | map(attribute='label') | list | tojson }}
+    },
+    annotation: {
+        sctype: {{ annotation.sctype.has_data | tojson }},
+        singler: {{ annotation.singler.has_data | tojson }},
+        samap: {{ annotation.samap.has_data | tojson }}
+    },
+    enrich: {
+        has_data: {{ enrich.has_data | tojson }},
+        cluster_count: {{ enrich.cluster_images | length | tojson }},
+        table_rows: {{ (enrich.table_rows[:30] if enrich.table_rows else []) | tojson }},
+        table_headers: {{ enrich.table_headers | tojson }}
+    },
+    integration: {
+        methods: {{ integration.methods | map(attribute='label') | list | tojson }},
+        keys: {{ integration.key_list | map(attribute='label') | list | tojson }}
+    },
+    dea: {
+        has_data: {{ dea.has_data | tojson }},
+        headers: {{ dea.headers | tojson }}
+    },
+    metaneighbor: {
+        has_data: {{ metaneighbor.has_data | tojson }}
+    }
+};
+
+async function runAIInterpretation() {
+    var resultDiv = document.getElementById('ai-result');
+    var statusDiv = document.getElementById('ai-status');
+    var statusText = document.getElementById('ai-status-text');
+    var btn = document.getElementById('btn-ai-interpret');
+
+    // 构建 prompt
+    var d = phytoData;
+    var species = document.getElementById('ov-species').value || d.project.species;
+    var tissue = document.getElementById('ov-tissue').value || d.project.tissue;
+    var bg = document.getElementById('ov-background').value || d.project.background || '';
+
+    var systemPrompt = document.getElementById('ai-system-prompt').value;
+
+    var userPrompt = '# 项目信息\n';
+    userPrompt += '- 物种: ' + species + '\n';
+    userPrompt += '- 组织: ' + tissue + '\n';
+    if (bg) userPrompt += '- 背景: ' + bg + '\n';
+    userPrompt += '\n# 聚类结果\n';
+    userPrompt += '聚类方法: CHOIR，条件: ' + d.cluster.conditions.join(', ') + '\n';
+    userPrompt += '\n# 细胞注释\n';
+    userPrompt += '使用的注释方法: ';
+    var annoMethods = [];
+    if (d.annotation.sctype) annoMethods.push('ScType');
+    if (d.annotation.singler) annoMethods.push('SingleR');
+    if (d.annotation.samap) annoMethods.push('SAMap');
+    userPrompt += annoMethods.join(', ') + '\n';
+
+    userPrompt += '\n# 整合评估\n';
+    userPrompt += '整合方法: ' + d.integration.methods.join(', ') + '\n';
+    userPrompt += '评估维度: ' + d.integration.keys.join(', ') + '\n';
+    userPrompt += 'MetaNeighbor 可重复性分析: ' + (d.metaneighbor.has_data ? '已完成' : '未进行') + '\n';
+
+    userPrompt += '\n# 差异表达分析 (DEA)\n';
+    if (d.dea.has_data) {
+        userPrompt += '已计算 allmarkers，包含列: ' + d.dea.headers.join(', ') + '\n';
+    } else {
+        userPrompt += '未提供 DEA 数据\n';
+    }
+
+    userPrompt += '\n# 富集分析\n';
+    if (d.enrich.has_data) {
+        userPrompt += '共 ' + d.enrich.cluster_count + ' 个 cluster 有富集结果\n';
+        if (d.enrich.table_rows.length > 0 && d.enrich.table_headers.length > 0) {
+            userPrompt += '表格包含列: ' + d.enrich.table_headers.join(', ') + '\n';
+            userPrompt += '前几行数据:\n';
+            for (var i = 0; i < Math.min(5, d.enrich.table_rows.length); i++) {
+                userPrompt += '  ' + d.enrich.table_rows[i].join(' | ') + '\n';
+            }
+        }
+    } else {
+        userPrompt += '未提供富集分析数据\n';
+    }
+
+    userPrompt += '\n请完成以下任务:\n';
+    userPrompt += '1. 总结该 ' + tissue + ' 组织的细胞类型图谱特征\n';
+    userPrompt += '2. 比较不同注释方法（' + annoMethods.join('、') + '）的一致性\n';
+    userPrompt += '3. 分析整合方法的效果，指出推荐的整合方案\n';
+    userPrompt += '4. 结合富集分析结果讨论关键生物学通路\n';
+    userPrompt += '5. 给出后续研究建议\n';
+
+    // 调用 API
+    resultDiv.textContent = '';
+    resultDiv.style.color = '#555';
+    statusDiv.style.display = 'block';
+    btn.disabled = true;
+    btn.textContent = '⏳ 生成中...';
+
+    await callKimiAPI(
+        systemPrompt,
+        userPrompt,
+        function(fullContent) {
+            resultDiv.textContent = fullContent;
+            resultDiv.scrollTop = resultDiv.scrollHeight;
+        },
+        function(fullContent) {
+            statusDiv.style.display = 'none';
+            btn.disabled = false;
+            btn.textContent = '🤖 生成 AI 解读';
+            statusText.textContent = '完成！';
+            setTimeout(function() { statusText.textContent = 'AI 正在分析数据...'; }, 2000);
+        },
+        function(errorMsg) {
+            statusDiv.style.display = 'none';
+            btn.disabled = false;
+            btn.textContent = '🤖 重新生成';
+            resultDiv.innerHTML = '<div style="color:#e74c3c;font-weight:bold;">❌ ' + errorMsg + '</div>';
+            resultDiv.style.color = '#e74c3c';
+        }
+    );
+}
+</script>

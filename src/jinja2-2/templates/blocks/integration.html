@@ -1,0 +1,94 @@
+<!-- ================================================================== -->
+<!-- Integration — 方法导航栏 + 折叠面板 + scIB                             -->
+<!-- ================================================================== -->
+<section class="section-container" id="section-integration">
+    <h2 class="section-title">🔗 6. Integration &amp; scIB Benchmark</h2>
+    <p class="section-subtitle">不同整合方法的 UMAP 比较。通过导航栏选择方法，折叠面板切换观测维度。</p>
+
+    {% if integration.has_data %}
+    <div class="method-navbar">
+        {% for m in integration.methods %}
+        <button class="nav-btn {% if loop.first %}active{% endif %}"
+                data-int-method="{{ m.id }}"
+                onclick="switchIntMethod('{{ m.id }}')">
+            {{ m.label }}
+        </button>
+        {% endfor %}
+    </div>
+
+    <div class="workspace-row">
+        <div class="workspace-left">
+            <img id="integrationViewer" class="display-img" src="" alt="Integration UMAP">
+        </div>
+        <div class="workspace-right">
+            {% for k in integration.key_list %}
+            <div class="accordion-item">
+                <button class="accordion-header-btn {% if loop.first %}active{% endif %}"
+                        data-int-key="{{ k.id }}"
+                        onclick="switchIntKey('{{ k.id }}')">
+                    <span>{{ k.label }}</span>
+                    <span style="font-size:12px;">▶</span>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div id="int-placeholder" style="display:none; text-align:center; color:#e74c3c; margin-top:15px; font-weight:bold;">
+        ⚠️ 该维度无数据
+    </div>
+
+    {% if integration.scib_b64 %}
+    <hr style="border:0;border-top:1px solid #eef0f2;margin:35px 0;">
+    <h3 style="color:#2c3e50;">scIB Overall Benchmark Scores</h3>
+    <div style="text-align:center;padding:20px;">
+        <img src="data:image/png;base64,{{ integration.scib_b64 }}"
+             alt="scIB Summary" style="max-width:85%;height:auto;box-shadow:0 4px 10px rgba(0,0,0,0.05);">
+        <br>
+        <a class="download-btn" href="data:image/png;base64,{{ integration.scib_b64 }}"
+           download="{{ integration.scib_filename }}">📥 下载 scIB 评估图 (PNG)</a>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="placeholder-note">⚠️ 未找到整合评估结果（integration_scib/png/）。</div>
+    {% endif %}
+</section>
+
+{% if integration.has_data %}
+<script>
+const intMatrix = {{ integration.integration_matrix | tojson }};
+let currentIntMethod = "{{ integration.methods[0].id if integration.methods else '' }}";
+let currentIntKey    = "{{ integration.key_list[0].id if integration.key_list else '' }}";
+
+function updateIntViewer() {
+    if (!currentIntMethod || !currentIntKey) return;
+    const methodData = intMatrix.find(m => m.id === currentIntMethod);
+    const b64 = (methodData && methodData.keys[currentIntKey]) ? methodData.keys[currentIntKey] : '';
+    if (b64) {
+        document.getElementById('integrationViewer').src = "data:image/png;base64," + b64;
+        document.getElementById('integrationViewer').style.display = '';
+        document.getElementById('int-placeholder').style.display = 'none';
+    } else {
+        document.getElementById('integrationViewer').style.display = 'none';
+        document.getElementById('int-placeholder').style.display = '';
+    }
+}
+
+function switchIntMethod(methodId) {
+    currentIntMethod = methodId;
+    document.querySelectorAll('[data-int-method]').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-int-method') === methodId);
+    });
+    updateIntViewer();
+}
+
+function switchIntKey(keyId) {
+    currentIntKey = keyId;
+    document.querySelectorAll('[data-int-key]').forEach(hdr => {
+        hdr.classList.toggle('active', hdr.getAttribute('data-int-key') === keyId);
+    });
+    updateIntViewer();
+}
+
+updateIntViewer();
+</script>
+{% endif %}

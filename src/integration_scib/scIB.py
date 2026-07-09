@@ -121,6 +121,8 @@ def main(unintegrated_h5ad, integrated_file, deals_file, tests_file, batch_key, 
     bm.plot_results_table()
     bm.plot_results_table(min_max_scale=False)
     plt.savefig(out_benchpdf, format='pdf', bbox_inches='tight')
+    out_benchpng = out_benchpdf.rsplit('.', 1)[0] + '.png'
+    plt.savefig(out_benchpng, format='png', dpi=300, bbox_inches='tight')
     plt.close()
     df = bm.get_results(min_max_scale=False)
     print(df)

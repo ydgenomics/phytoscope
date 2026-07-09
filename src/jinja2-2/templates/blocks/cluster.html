@@ -1,0 +1,57 @@
+<!-- ================================================================== -->
+<!-- Cluster — 动态条件导航栏 + UMAP 图                                     -->
+<!-- ================================================================== -->
+<section class="section-container" id="section-cluster">
+    <h2 class="section-title">🔵 2. Clustering UMAP (CHOIR)</h2>
+    <p class="section-subtitle">不同条件下的聚类结果。点击导航按钮切换条件。</p>
+
+    {% if cluster.has_data %}
+    <div class="method-navbar">
+        {% for c in cluster.conditions %}
+        <button class="nav-btn {% if loop.first %}active{% endif %}"
+                data-cluster-condition="{{ c.id }}"
+                onclick="switchClusterCondition('{{ c.id }}')">
+            {{ c.label }}
+        </button>
+        {% endfor %}
+    </div>
+
+    <div class="workspace-row">
+        <div class="workspace-left" style="flex:1;">
+            <img id="clusterViewer" class="display-img" src="" alt="Cluster UMAP">
+        </div>
+    </div>
+    <div style="text-align:center;">
+        <a id="clusterDownload" class="download-btn" href="#" download="">📥 下载当前 PNG</a>
+    </div>
+    {% else %}
+    <div class="placeholder-note">⚠️ 未找到聚类 UMAP 图片（cluster/CHOIR_*_DimPlot.png）。</div>
+    {% endif %}
+</section>
+
+{% if cluster.has_data %}
+<script>
+const clusterData = {{ cluster.conditions | tojson }};
+let currentCluster = clusterData.length > 0 ? clusterData[0].id : '';
+
+function switchClusterCondition(condId) {
+    currentCluster = condId;
+    document.querySelectorAll('[data-cluster-condition]').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-cluster-condition') === condId);
+    });
+    updateClusterViewer();
+}
+
+function updateClusterViewer() {
+    const item = clusterData.find(c => c.id === currentCluster);
+    if (item) {
+        document.getElementById('clusterViewer').src = "data:image/png;base64," + item.b64;
+        const dl = document.getElementById('clusterDownload');
+        dl.href = "data:image/png;base64," + item.b64;
+        dl.download = item.filename;
+    }
+}
+
+if (clusterData.length > 0) updateClusterViewer();
+</script>
+{% endif %}

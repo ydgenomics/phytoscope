@@ -1,59 +1,107 @@
-# phytoscope
-let plant cell annotation more easy!
+# 🌱 Phytoscope
+
+> **植物单细胞自动化注释流水线** — Let plant cell annotation more easy!
+
+端到端方案：从聚类、多方法注释、批次整合评估，到交互式 HTML 报告 + AI 解读。
 
 ---
 
-细胞分群与细胞类别
-分群影响注释，证据的对齐
-现在问题是scplantdb的细胞类型marker基因为什么这么多？
+## 快速开始
 
+```bash
+# 1. 安装依赖
+pip install jinja2 pandas plotly
 
-- 项目背景
-  - 单细胞测序技术的发展，越来越多的研究人员利用单细胞技术做EvoDvo研究
-  - 植物三大图谱，拟南芥，水稻，大豆，泛维管植物示例
-  - 细胞注释的重要性，是后面研究的基础
-- 项目意义
-  - 植物单细胞注释的难点
-    - 缺少高质量的细胞类型marker基因
-    - 非模式物种研究的困境
-    - 细胞类型marker基因收集费时费力
-    - 自动化注释软件结果的整合
-    - 多分组数据去批次和注释对齐
-  - 项目解决方案
-    - 整合多个软件方法
-    - 从项目背景、计算、解释的端到端解决方案
-- 项目设计
-  - Data
-    - knowledge data
-    - public data
-    - studied data
-  - Compution
-    - cluster with leiden and CHOIR
-    - annotation with multi-methods
-    - align with metaneighbor, integration, and scib-metrices
-  - Interpretation
-    - display: jinja2
-    - api: kimi
-- 测试效果
-  - 非模式物种景天shoot的镉对照处理的注释
-- 效率提升
-  - 传统
-  - 流程运行时间
-- 总结展望
+# 2. 生成报告
+cd src/jinja2-2/
+python render_full_report.py \
+    --results_dir ../../data/output \
+    --species "Sedum plumbizincicola" \
+    --tissue "shoot" \
+    --output phytoscope_full_report.html
 
-植物单细胞自动化注释
-模板html的Data模块，填写相关的单细胞项目信息，包括但不限于，物种信息（种名），组织，项目背景（optional），提供系统提示词：总结分析项目背景，整理其解剖学信息，应该注释成那些细胞类型，关注的科学问题，可用的资源
+# 3. 浏览器打开 phytoscope_full_report.html
+```
 
-填写数据和运行流程的参数，(这部分学习src脚本的要求参数完善)
-input_rds, marker_csv, query_pep, ref_rds, ref_pep,等文件
-batch_key, sample_key等参数
-填好了之后可以导出为csv
+详细参数见 `src/jinja2-2/README.md`。
 
-计算部分，输入的rds先读入choir如果给的cluster_key存在则不跑，不存在再看unique(seu$batch_key)的数量是不是大于1，大于1的话要split之后分别跑CHOIR,然后再merge为一个rds保存。跑了CHOIR之后输出的rds或判断直接保留原文件的rds，经过utils/seurat/preprocess.R处理rds，处理好的rds跑src\utils\seurat\allmarkers_conserved.R拿到cluster 特异marker基因列表，后续用于运行src/anno/enrich，处理好的rds将rds作为输入跑metaneighbor，rds可以通过utils/convert转rds为h5ad跑相应的python脚本。metaneighbor输出的rds作为integration_scib的输入，其metaneighbor添加的注释键作为label_key。metaneighbor输出的rds和转好的h5ad文件用于跑src/anno。其需要的文件需要在data部分准备好，设置好。
+---
 
-输入的细胞类型特异基因要有这些column，像D:\APP_cs\YD_learn\github\phytoscope\data\jintian-marker2.csv一样，这个是同源注释所以要跑一下src\utils\seurat\orth.R拿到转换好的*_sctype.csv，这个文件将用于anno_sctype的运行和后续marker基因的可视化。
+## 项目结构
 
+```
+phytoscope/
+├── src/                          ← 分析脚本
+│   ├── cluster/                  ← CHOIR 聚类
+│   ├── anno/                     ← 注释 (ScType / SingleR / SAMap) + 富集
+│   ├── integration_scib/         ← 多方法整合 + scIB 评估
+│   ├── metaneighbor/             ← MetaNeighbor 可重复性
+│   ├── utils/                    ← 工具 (格式转换 / 预处理 / DEA)
+│   └── jinja2-2/                 ← 🎯 报告生成器 (整合所有结果 → 单文件 HTML)
+│       ├── render_full_report.py ← 主入口
+│       ├── collectors/           ← 数据收集层
+│       ├── templates/            ← Jinja2 模板
+│       └── doc/                  ← 使用与开发文档
+├── data/
+│   ├── input/                    ← 输入数据
+│   └── output/                   ← 各模块输出 (--results_dir 指向这里)
+└── doc/                          ← 项目设计文档
+```
 
-解读部分，基于data部分总结的背景和公共数据，从不同的方法证据和marker证据，得出最终的注释信息，metaneighbor分群对应的细胞类型，说明原因和不足。这些都要内嵌系统提示词。
+---
 
-整个jinja2的纯前端设计要能嵌入这些内容，同时也要能支持接入api，实现对文字和图像的解读。
+## 流水线概览
+
+```
+┌─────────────┐    ┌──────────────────────────────┐    ┌──────────────────┐
+│  📦 Data     │ →  │  ⚙️ Computation              │ →  │  🔍 Interpretation │
+│  项目信息     │    │                              │    │                    │
+│  参考数据     │    │  ① CHOIR 聚类                │    │  Jinja2 单文件报告  │
+│  Marker基因  │    │  ② Preprocess + AllMarkers   │    │  • 9 个交互模块    │
+└─────────────┘    │  ③ GO/KEGG 富集              │    │  • Plotly 热图     │
+                   │  ④ MetaNeighbor 对齐          │    │  • DataTables 表格  │
+                   │  ⑤ Integration + scIB 评估    │    │  • 图片下载         │
+                   │  ⑥ ScType/SingleR/SAMap 注释  │    │  • Kimi AI 解读    │
+                   └──────────────────────────────┘    └──────────────────┘
+```
+
+---
+
+## 报告模块
+
+| # | 模块 | 内容 |
+|:--:|------|------|
+| 1 | **Overview** | 可编辑表单（物种/组织/背景） |
+| 2 | **Clustering** | CHOIR UMAP（动态条件导航） |
+| 3 | **MetaNeighbor** | AUROC 交互热图 |
+| 4 | **DEA** | All Markers 差异基因表 |
+| 5 | **Enrichment** | GO/KEGG 富集图 + 表格 |
+| 6 | **Integration** | 多方法 UMAP + scIB 评估 |
+| 7 | **Annotation** | ScType / SingleR / SAMap 热图 |
+| 8 | **Dotplot** | Marker 表达点图 |
+| 9 | **AI Interpretation** | Kimi API 流式解读 |
+
+---
+
+## 关键特性
+
+- **零文件依赖** — 所有图片 Base64 嵌入，单文件即可分享
+- **动态发现** — glob 模式匹配文件，换项目无需改代码
+- **多证据交叉验证** — 三种注释方法 + MetaNeighbor 对齐
+- **AI 辅助解读** — Kimi API 流式生成生物学结论
+- **离线可用** — CDN 资源加载后无需服务器
+
+---
+
+## 文档
+
+| 文档 | 说明 |
+|------|------|
+| `src/jinja2-2/README.md` | 报告生成器使用说明 |
+| `src/jinja2-2/doc/architecture.md` | 架构设计 |
+| `src/jinja2-2/doc/collector-dev.md` | 如何新增模块 |
+| `src/jinja2-2/doc/template-dev.md` | 模板开发指南 |
+| `src/jinja2-2/doc/interpretation-guide.md` | AI 解读使用指南 |
+| `src/jinja2-2/doc/faq.md` | 常见问题 |
+| `PROJECT.md` | 完整项目设计文档 |
+

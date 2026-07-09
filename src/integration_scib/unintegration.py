@@ -48,6 +48,13 @@ def run_unintegration(input_h5ad, prefix, batch_key, key_list, cluster_name, res
         sc.pl.umap(adata, color=key_list, legend_loc='on data', ncols=1)
         plt.savefig(pdf, format='pdf', dpi=300, bbox_inches='tight')
         plt.close()
+    # 保存各分组 UMAP 为 PNG
+    method_tag = "unintegrated"
+    for key in [batch_key] + list(key_list):
+        fig, ax = plt.subplots(figsize=(10, 8))
+        sc.pl.umap(adata, color=key, ax=ax, show=False, legend_loc='on data')
+        plt.savefig(f"{method_tag}_{key}.png", dpi=300, bbox_inches='tight')
+        plt.close()
     adata.write(filename=prefix + '_unintegrated.h5ad',compression="gzip")
     
     elapsed_h = (time.time() - start) / 3600

@@ -1,0 +1,19 @@
+<!-- ================================================================== -->
+<!-- Dotplot — 嵌入 dotplot.png                                             -->
+<!-- ================================================================== -->
+<section class="section-container" id="section-dotplot">
+    <h2 class="section-title">🎯 8. Dotplot</h2>
+    <p class="section-subtitle">Marker 基因在各细胞类型中的表达点图。</p>
+
+    {% if dotplot.has_data %}
+    <div style="text-align:center;">
+        <img class="display-img" src="data:image/png;base64,{{ dotplot.b64 }}"
+             alt="Dotplot" style="max-height:700px;">
+        <br>
+        <a class="download-btn" href="data:image/png;base64,{{ dotplot.b64 }}"
+           download="{{ dotplot.filename }}">📥 下载 Dotplot PNG</a>
+    </div>
+    {% else %}
+    <div class="placeholder-note">⚠️ 未找到 Dotplot 图片（utils/summary/dotplot.png）。</div>
+    {% endif %}
+</section>

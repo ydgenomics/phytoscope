@@ -8,6 +8,7 @@
 lapply(c("ggraph","igraph","tidyverse", "data.tree"), library, character.only = T)
 lapply(c("dplyr","Seurat","HGNChelper", "optparse"), library, character.only = T)
 library(optparse)
+library(ggplot2)
 
 option_list <- list(
     make_option(
@@ -152,6 +153,27 @@ write_report({
 es.max <- sctype_score(scRNAseqData = scRNAseqData_scaled, scaled = TRUE, gs = gs_list$gs_positive, gs2 = gs_list$gs_negative)
 str(es.max)
 
+# ========== Save normalized score matrix for heatmap ==========
+# Build cell_type × cluster matrix
+sctype_cluster_matrix <- do.call("rbind", lapply(
+  unique(seu@meta.data[[cluster_key]]),
+  function(cl) {
+    cells <- rownames(seu@meta.data[seu@meta.data[[cluster_key]] == cl, ])
+    rowSums(es.max[, cells, drop = FALSE])
+  }
+))
+sctype_cluster_matrix <- t(sctype_cluster_matrix)
+colnames(sctype_cluster_matrix) <- unique(seu@meta.data[[cluster_key]])
+
+# Softmax normalization (per cluster) to [0,1]
+softmax <- function(x) exp(x - max(x)) / sum(exp(x - max(x)))
+sctype_prob <- apply(sctype_cluster_matrix, 2, softmax)
+
+# Save CSV
+write.csv(sctype_prob,
+  paste0(sub("\\.rds$", "", basename(input_query_rds)), "_sctype_prob_clusters.csv"),
+  row.names = TRUE)
+
 # NOTE: scRNAseqData parameter should correspond to your input scRNA-seq matrix. For raw (unscaled) count matrix set scaled = FALSE
 # When using Seurat, we use "RNA" slot with 'scale.data' by default. Please change "RNA" to "SCT" for sctransform-normalized data,
 # or to "integrated" for joint dataset analysis. To apply sctype with unscaled data, use e.g. pbmc[["RNA"]]$counts or pbmc[["RNA"]]@counts, with scaled set to FALSE.
@@ -279,14 +301,27 @@ col_map <- setNames(unique(nodes_lvl2$Colour), unique(cL_resutls$cluster))
 #         repel      = TRUE,
 #         cols       = col_map[cl_order])  # 保证顺序完全一致
 p4 <- DimPlot(seu, reduction = umap_name, group.by = cluster_key, label = TRUE, repel = TRUE, cols = col_map[cl_order])+ gggr
-p5 <- DimPlot(seu, reduction = umap_name, group.by = "sctype", label = TRUE, repel = TRUE)
 output_query_rds <- paste0(sub("\\.rds$", "", basename(input_query_rds)), "_sctype.rds")
 output_umap <- paste0(sub("\\.rds$", "", basename(input_query_rds)), "_sctype_umap.pdf")
 plot_height=8
 pdf(output_umap, width = 2.5 * plot_height, height = plot_height)
 print(p4)
-print(p5)
 dev.off()
+
+# output_umap_png <- paste0(sub("\\.rds$", "", basename(input_query_rds)), "_sctype_umap.png")
+# png(output_umap_png, width = 2.5 * plot_height, height = plot_height, units = "in", res = 300)
+# print(p4)
+# dev.off()
+
+output_umap <- paste0(sub("\\.rds$", "", basename(input_query_rds)), "_sctype.pdf")
+pdf(output_umap)
+DimPlot(seu, reduction = umap_name, group.by = 'sctype', shuffle = TRUE, label = TRUE) + NoLegend()
+dev.off()
+
+output_umap_png <- paste0(sub("\\.rds$", "", basename(input_query_rds)), "_sctype.png")
+ggsave(output_umap_png,
+       plot = DimPlot(seu, reduction = umap_name, group.by = 'sctype', shuffle = TRUE, label = TRUE) + NoLegend(),
+       dpi = 300)
 
 print(colnames(seu@meta.data))
 saveRDS(seu, output_query_rds)

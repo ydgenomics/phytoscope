@@ -1,0 +1,141 @@
+<!-- ================================================================== -->
+<!-- Annotation — sctype / singler / SAMap 三合一                            -->
+<!-- ================================================================== -->
+<section class="section-container" id="section-annotation">
+    <h2 class="section-title">🏷️ 7. Cell Type Annotation</h2>
+    <p class="section-subtitle">三种注释方法的结果对比。左侧 UMAP，右侧概率热图（行=细胞类型，列=cluster）。</p>
+
+    {% if annotation.has_data %}
+    <div class="tabs-section">
+        <div class="tab-buttons">
+            {% if annotation.sctype.has_data %}
+            <button class="tab-btn active"
+                    data-anno-tab="sctype"
+                    onclick="switchAnnoTab('sctype')">sctype</button>
+            {% endif %}
+            {% if annotation.singler.has_data %}
+            <button class="tab-btn {% if not annotation.sctype.has_data %}active{% endif %}"
+                    data-anno-tab="singler"
+                    onclick="switchAnnoTab('singler')">singler</button>
+            {% endif %}
+            {% if annotation.samap.has_data %}
+            <button class="tab-btn {% if not annotation.sctype.has_data and not annotation.singler.has_data %}active{% endif %}"
+                    data-anno-tab="samap"
+                    onclick="switchAnnoTab('samap')">SAMap</button>
+            {% endif %}
+        </div>
+
+        <!-- sctype tab -->
+        {% if annotation.sctype.has_data %}
+        <div data-anno-tab="sctype" class="tab-content active">
+            <div class="workspace-row">
+                <div class="workspace-left" style="flex:1;">
+                    {% if annotation.sctype.umap_b64 %}
+                    <div style="text-align:center;">
+                        <img class="display-img" src="data:image/png;base64,{{ annotation.sctype.umap_b64 }}"
+                             alt="sctype UMAP" style="max-height:550px;">
+                        <br>
+                        <a class="download-btn" href="data:image/png;base64,{{ annotation.sctype.umap_b64 }}"
+                           download="{{ annotation.sctype.umap_filename }}">📥 下载 PNG</a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="workspace-right" style="flex:1;">
+                    <div id="anno-sctype-heatmap" class="plotly-container" style="min-height:500px;"></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- singler tab -->
+        {% if annotation.singler.has_data %}
+        <div data-anno-tab="singler" class="tab-content {% if not annotation.sctype.has_data %}active{% endif %}">
+            <div class="workspace-row">
+                <div class="workspace-left" style="flex:1;">
+                    {% if annotation.singler.umap_b64 %}
+                    <div style="text-align:center;">
+                        <img class="display-img" src="data:image/png;base64,{{ annotation.singler.umap_b64 }}"
+                             alt="singler UMAP" style="max-height:550px;">
+                        <br>
+                        <a class="download-btn" href="data:image/png;base64,{{ annotation.singler.umap_b64 }}"
+                           download="{{ annotation.singler.umap_filename }}">📥 下载 PNG</a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="workspace-right" style="flex:1;">
+                    <div id="anno-singler-heatmap" class="plotly-container" style="min-height:500px;"></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- SAMap tab -->
+        {% if annotation.samap.has_data %}
+        <div data-anno-tab="samap" class="tab-content {% if not annotation.sctype.has_data and not annotation.singler.has_data %}active{% endif %}">
+            <div class="workspace-row">
+                <div class="workspace-left" style="flex:1;">
+                    {% if annotation.samap.umap_b64 %}
+                    <div style="text-align:center;">
+                        <img class="display-img" src="data:image/png;base64,{{ annotation.samap.umap_b64 }}"
+                             alt="SAMap UMAP" style="max-height:550px;">
+                        <br>
+                        <a class="download-btn" href="data:image/png;base64,{{ annotation.samap.umap_b64 }}"
+                           download="{{ annotation.samap.umap_filename }}">📥 下载 PNG</a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="workspace-right" style="flex:1;">
+                    <div id="anno-samap-heatmap" class="plotly-container" style="min-height:500px;"></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="placeholder-note">⚠️ 未找到注释结果（anno/sctype/, anno/singler/, anno/SAMap_result/）。</div>
+    {% endif %}
+</section>
+
+<script>
+function switchAnnoTab(tabId) {
+    document.querySelectorAll('#section-annotation [data-anno-tab]').forEach(function(el) {
+        el.classList.remove('active');
+    });
+    var targetContent = document.querySelector('#section-annotation .tab-content[data-anno-tab="' + tabId + '"]');
+    if (targetContent) targetContent.classList.add('active');
+    var targetBtn = document.querySelector('#section-annotation .tab-btn[data-anno-tab="' + tabId + '"]');
+    if (targetBtn) targetBtn.classList.add('active');
+}
+</script>
+
+{# 各子方法热图渲染 #}
+{% if annotation.sctype.has_data %}
+<script>
+(function() {
+    var d = {{ annotation.sctype.heatmap_json | safe }};
+    if (d && d.data && d.data.length > 0) {
+        Plotly.newPlot('anno-sctype-heatmap', d.data, d.layout, {responsive:true, displayModeBar:true});
+    }
+})();
+</script>
+{% endif %}
+{% if annotation.singler.has_data %}
+<script>
+(function() {
+    var d = {{ annotation.singler.heatmap_json | safe }};
+    if (d && d.data && d.data.length > 0) {
+        Plotly.newPlot('anno-singler-heatmap', d.data, d.layout, {responsive:true, displayModeBar:true});
+    }
+})();
+</script>
+{% endif %}
+{% if annotation.samap.has_data %}
+<script>
+(function() {
+    var d = {{ annotation.samap.heatmap_json | safe }};
+    if (d && d.data && d.data.length > 0) {
+        Plotly.newPlot('anno-samap-heatmap', d.data, d.layout, {responsive:true, displayModeBar:true});
+    }
+})();
+</script>
+{% endif %}
