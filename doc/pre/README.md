@@ -1,0 +1,34 @@
+PlantAnnotator —— 基于LLM Agent的植物单细胞全自动智能注释平台
+
+- 项目背景
+  - 单细胞测序技术的发展，越来越多的研究人员利用单细胞技术做EvoDvo研究
+  - 植物三大图谱，拟南芥，水稻，大豆，泛维管植物示例
+  - 细胞注释的重要性，是后面研究的基础
+- 项目意义
+  - 植物单细胞注释的难点
+    - 缺少高质量的细胞类型marker基因
+    - 非模式物种研究的困境
+    - 细胞类型marker基因收集费时费力
+    - 自动化注释软件结果的整合
+    - 多分组数据去批次和注释对齐
+  - 项目解决方案
+    - 整合多个软件方法
+    - 从项目背景、计算、解释的端到端解决方案
+- 项目设计
+  - Data
+    - knowledge data
+    - public data
+    - studied data
+  - Compution
+    - cluster with leiden and CHOIR
+    - annotation with multi-methods
+    - align with metaneighbor, integration, and scib-metrices
+  - Interpretation
+    - display: jinja2
+    - api: kimi
+- 项目进展
+- 项目效果
+  - 非模式物种景天shoot的镉对照处理的注释
+  - 传统
+  - 流程运行时间
+- 总结展望
