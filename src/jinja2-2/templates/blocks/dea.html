@@ -1,42 +1,66 @@
 <!-- ================================================================== -->
-<!-- DEA — DataTables 全量展示 allmarkers                                   -->
+<!-- DEA — Tab 切换 show 多个 DEA 表格                                      -->
 <!-- ================================================================== -->
 <section class="section-container" id="section-dea">
-    <h2 class="section-title">📊 4. Differential Expression Analysis</h2>
-    <p class="section-subtitle">各 cluster 的差异表达基因 (All Markers)。支持搜索、排序、导出 CSV。</p>
+    <h2 class="section-title">📊 4. Differential Expression Analysis<button class="help-btn" onclick="showHelp('dea')" title="查看说明">?</button></h2>
+    <p class="section-subtitle">各 cluster 的差异表达基因（Wilcoxon 秩和检验）。通过 Tab 切换 All Markers / Conserved Markers，表格支持搜索、排序、导出 CSV。</p>
 
-    {% if dea.has_data %}
-    <table id="deaTable" class="display cell-border hover stripe" style="width:100%;">
-        <thead>
-            <tr>
-                {% for h in dea.headers %}
-                <th>{{ h }}</th>
-                {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in dea.rows %}
-            <tr>
-                {% for cell in row %}
-                    {% if cell|length > 40 %}
-                    <td><div class="scrollable-cell" title="{{ cell }}">{{ cell }}</div></td>
-                    {% else %}
-                    <td>{{ cell }}</td>
-                    {% endif %}
-                {% endfor %}
-            </tr>
+    {% if dea.has_data and dea.tables %}
+        {% if dea.tables|length > 1 %}
+        <div class="method-navbar" style="margin-bottom:15px;">
+            {% for tbl in dea.tables %}
+            <button class="nav-btn {% if loop.first %}active{% endif %}"
+                    onclick="switchDEATab(event, 'dea-content-{{ loop.index0 }}')">
+                {{ tbl.name }}
+            </button>
             {% endfor %}
-        </tbody>
-    </table>
+        </div>
+        {% endif %}
+
+        {% for tbl in dea.tables %}
+        <div id="dea-content-{{ loop.index0 }}" class="dea-tab-content" style="{% if not loop.first %}display:none;{% endif %}">
+            <table id="deaTable{{ loop.index0 }}" class="display cell-border hover stripe" style="width:100%;">
+                <thead>
+                    <tr>
+                        {% for h in tbl.headers %}
+                        <th>{{ h }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in tbl.rows %}
+                    <tr>
+                        {% for cell in row %}
+                            {% if cell|length > 40 %}
+                            <td><div class="scrollable-cell" title="{{ cell }}">{{ cell }}</div></td>
+                            {% else %}
+                            <td>{{ cell }}</td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
     {% else %}
-    <div class="placeholder-note">⚠️ 未找到 DEA 结果（utils/seurat/DEA/allmarkers_*.csv）。</div>
+    <div class="placeholder-note">⚠️ 未找到 DEA 结果（utils/seurat/DEA/*.csv）。</div>
     {% endif %}
 </section>
 
-{% if dea.has_data %}
+{% if dea.has_data and dea.tables %}
 <script>
+function switchDEATab(evt, contentId) {
+    document.querySelectorAll('#section-dea .dea-tab-content').forEach(function(tc) { tc.style.display = 'none'; });
+    document.querySelectorAll('#section-dea .nav-btn').forEach(function(btn) { btn.classList.remove('active'); });
+    var content = document.getElementById(contentId);
+    if (content) content.style.display = 'block';
+    if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
+}
+
 $(document).ready(function() {
-    $('#deaTable').DataTable({
+    {% for tbl in dea.tables %}
+    $('#deaTable{{ loop.index0 }}').DataTable({
         pageLength: 15,
         lengthMenu: [10, 15, 30, 50, 100, -1],
         order: [[0, 'asc']],
@@ -45,7 +69,7 @@ $(document).ready(function() {
         buttons: [{
             extend: 'csvHtml5',
             text: '📊 导出 CSV',
-            filename: '{{ dea.filename | replace(".csv", "") }}_exported',
+            filename: '{{ tbl.filename | replace(".csv", "") }}_exported',
             exportOptions: {
                 format: {
                     body: function(data, row, col, node) {
@@ -64,6 +88,7 @@ $(document).ready(function() {
             paginate: { previous: '上一页', next: '下一页' }
         }
     });
+    {% endfor %}
 });
 </script>
 {% endif %}

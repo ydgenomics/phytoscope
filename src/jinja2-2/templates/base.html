@@ -8,6 +8,7 @@
     <!-- Bootstrap 5.3 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- DataTables -->
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -269,6 +270,167 @@
         }
         .dt-button.buttons-csv:hover { background: #2980b9 !important; }
 
+        /* ===== AI 解读滚动容器 ===== */
+        .ai-result-scroll {
+            max-height: 520px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #555;
+            padding: 16px;
+            scroll-behavior: smooth;
+        }
+        .ai-result-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .ai-result-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        .ai-result-scroll::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        .ai-result-scroll::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* ===== 聊天消息样式 ===== */
+        .chat-history {
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 16px;
+            background: #fafafa;
+            border-radius: 8px;
+            scroll-behavior: smooth;
+        }
+        .chat-history::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-history::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        .chat-history::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        .chat-message {
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 85%;
+            font-size: 14px;
+            line-height: 1.7;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        .chat-message.user {
+            background: #e3f2fd;
+            color: #1a237e;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-message.assistant {
+            background: #ffffff;
+            color: #333;
+            border: 1px solid #e8e8e8;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+        .chat-message.system {
+            background: #fff3e0;
+            color: #e65100;
+            text-align: center;
+            font-size: 12px;
+            max-width: 100%;
+            margin: 8px auto;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .chat-input-area textarea {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 44px;
+            max-height: 120px;
+            font-family: inherit;
+        }
+        .chat-input-area textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(52,152,219,0.2);
+        }
+        .chat-send-btn {
+            padding: 10px 24px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+            height: 44px;
+        }
+        .chat-send-btn:hover { background: #2980b9; }
+        .chat-send-btn:disabled { background: #95a5a6; cursor: not-allowed; }
+
+        /* ===== 操作按钮组（复制/下载） ===== */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .action-btn {
+            padding: 6px 14px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #555;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .action-btn:hover {
+            background: #e0e0e0;
+            border-color: #bbb;
+        }
+        .action-btn.primary {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        .action-btn.primary:hover { background: #2980b9; }
+        .action-btn.success {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+        .action-btn.success:hover { background: #27ae60; }
+
+        /* ===== 聊天占位提示 ===== */
+        .chat-placeholder {
+            text-align: center;
+            color: var(--muted);
+            padding: 40px 20px;
+        }
+        .chat-placeholder i {
+            display: block;
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+        }
+
         /* ===== 占位提示 ===== */
         .placeholder-note {
             color: var(--muted);
@@ -278,6 +440,59 @@
             background: #fafafa;
             border-radius: 8px;
             border: 1px dashed #ddd;
+        }
+
+        /* ===== ? 帮助按钮 ===== */
+        .help-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            color: #4a5568;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            margin-left: 8px;
+            text-decoration: none;
+            transition: all 0.2s;
+            vertical-align: middle;
+        }
+        .help-btn:hover {
+            background: var(--accent);
+            color: white;
+        }
+        .help-btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52,152,219,0.3);
+        }
+        .help-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* ===== 帮助展开面板 ===== */
+        .help-panel {
+            background: #f0f7ff;
+            border-left: 4px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            margin: 0 0 18px 0;
+            padding: 14px 18px;
+            font-size: 13.5px;
+            line-height: 1.8;
+            color: #4a5568;
+            animation: helpSlideDown 0.2s ease;
+            overflow: hidden;
+        }
+        .help-panel p { margin: 0 0 6px 0; }
+        .help-panel ul { margin: 4px 0; padding-left: 20px; }
+        .help-panel li { margin-bottom: 2px; }
+        @keyframes helpSlideDown {
+            from { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
+            to { opacity: 1; max-height: 600px; padding-top: 14px; padding-bottom: 14px; }
         }
 
         /* ===== Plotly 容器 ===== */
@@ -388,6 +603,81 @@ async function callKimiAPI(systemPrompt, userMessage, onChunk, onDone, onError) 
     } catch (err) {
         onError('Network error: ' + err.message);
     }
+}
+</script>
+
+<script>
+// ===== ? 帮助内容（与各模块 README 的 Brief 节对齐） =====
+var HELP_CONTENT = {
+    overview: {
+        title: '1. Project Overview',
+        desc: '项目基本信息表单，包含物种（Species）、组织（Tissue）和实验背景（Background）。Python 渲染时预填命令行参数，用户可在浏览器中修改。修改后的数据自动保存到浏览器 localStorage，并作为所有 AI 分析的任务背景上下文。'
+    },
+    cluster: {
+        title: '2. Clustering — CHOIR 聚类',
+        desc: '<p>基于 <b>CHOIR</b>（Clustering by Hierarchical Optimization and Iterative Refinement）算法进行细胞聚类。CHOIR 通过层次聚类分步合并策略识别细胞群：从每个细胞作为独立 cluster 开始，逐步合并表达谱相似的 cluster，以显著性阈值 α（默认 0.05）控制合并严格程度。α 越小聚类越细，越大聚类越粗。</p><p>输出为 DimPlot 降维可视化，不同颜色表示不同 cluster。</p>'
+    },
+    metaneighbor: {
+        title: '3. MetaNeighbor — 聚类可重复性分析',
+        desc: '<p><b>MetaNeighbor</b> 计算不同聚类方案之间的 AUROC 相似度矩阵，评估聚类结果的可重复性和稳定性。对每种聚类方案选取各 cluster 的 top 差异基因构建表达特征，用 AUROC 衡量 cluster 间基因表达特征相似度。</p><p>高 AUROC 值（接近 1）表示两种聚类方案对同一群细胞识别高度一致，低 AUROC 值表示聚类差异较大。</p>'
+    },
+    dea: {
+        title: '4. DEA — 差异表达分析',
+        desc: '<p>对每个 cluster 进行差异表达分析（Differential Expression Analysis）。使用 <b>Wilcoxon 秩和检验</b> 比较每个基因在目标 cluster 与其他所有 cluster 中的表达差异。</p><ul><li><b>All Markers</b>：使用全部样本细胞的完整差异基因列表</li><li><b>Conserved Markers</b>：在不同批次/条件下保守表达的 marker 基因</li></ul><p>结果按 logFC（表达倍数变化）和调整后 p 值排序。</p>'
+    },
+    enrich: {
+        title: '5. Enrichment — GO/KEGG 富集分析',
+        desc: '<p>对每个 cluster 的 <b>cluster-specific 差异表达基因</b>（marker genes）进行 GO（Gene Ontology：BP/CC/MF）和 KEGG 超几何检验富集分析，使用 <b>clusterProfiler</b>。</p><p>显著富集的通路（p.adjust &lt; 0.05）反映该 cluster 的主要生物学功能，结合组织背景可以推断各 cluster 的潜在细胞身份。</p>'
+    },
+    integration: {
+        title: '6. Integration — 整合方法评估',
+        desc: '<p>比较多种批次效应校正方法的效果：</p><ul><li><b>Harmony</b>：迭代软聚类校正 PCA 嵌入</li><li><b>scVI</b>：深度生成模型（VAE）学习批次无关表示</li><li><b>iNMF (rliger)</b>：非负矩阵分解挖掘共享和批次特异性因子</li><li><b>BBKNN</b>：batch-balanced kNN 图批次校正</li><li><b>CCA (SCTransform)</b>：典型相关分析跨批次锚点识别</li></ul><p><b>scIB</b> 从批次校正和生物学保守两个维度综合评分。</p>'
+    },
+    annotation: {
+        title: '7. Annotation — 细胞类型注释',
+        desc: '<p>三种互补的细胞类型自动注释方法：</p><ul><li><b>ScType</b>：基于标记基因的敏感度加权打分。特异基因（被越少细胞类型共享）权重越高。正标记加分，负标记扣分</li><li><b>SingleR</b>：基于参考数据集表达谱的 Spearman 秩相关系数。每个细胞独立注释，迭代筛选 + Delta 置信度修剪</li><li><b>SAMap</b>：跨物种同源基因映射，通过互惠 BLAST 和 SAM 算法推断物种间细胞类型对应关系</li></ul><p>三种方法交叉验证，多方法一致的结论可信度更高。</p>'
+    },
+    dotplot: {
+        title: '8. Dotplot — 标记基因可视化',
+        desc: '<p><b>Dotplot</b> 展示各 cluster 中特定标记基因（marker genes）的表达模式和比例。每个点的<b>大小</b>表示该基因在该 cluster 中阳性细胞的百分比，<b>颜色深浅</b>表示平均表达水平。Dotplot 有助于直观验证细胞注释的合理性。</p>'
+    }
+};
+
+function showHelp(module) {
+    var content = HELP_CONTENT[module];
+    if (!content) return;
+
+    var section = document.getElementById('section-' + module);
+    if (!section) return;
+
+    var btn = section.querySelector('.help-btn');
+    if (!btn) return;
+
+    var existingPanel = section.querySelector('.help-panel');
+    if (existingPanel) {
+        if (existingPanel.style.display !== 'none') {
+            existingPanel.style.display = 'none';
+            btn.classList.remove('active');
+        } else {
+            existingPanel.style.display = 'block';
+            btn.classList.add('active');
+        }
+        return;
+    }
+
+    var panel = document.createElement('div');
+    panel.className = 'help-panel';
+    panel.innerHTML = content.desc;
+
+    var subtitle = section.querySelector('.section-subtitle');
+    if (subtitle) {
+        subtitle.insertAdjacentElement('afterend', panel);
+    } else {
+        var heading = section.querySelector('h2');
+        if (heading) heading.insertAdjacentElement('afterend', panel);
+    }
+
+    btn.classList.add('active');
 }
 </script>
 

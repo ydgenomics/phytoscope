@@ -42,9 +42,49 @@ def collect_enrich(enrich_dir):
     if txt_path:
         headers, rows = read_csv_headers_rows(txt_path, delimiter='\t')
 
+    # 按 cluster 分组构建富集摘要（用于 AI 解读 prompt）
+    cluster_names = []
+    cluster_summaries = {}
+    cluster_idx = 0  # "cluster" 列在表头中的索引
+    # 查找 cluster 列的索引
+    for i, h in enumerate(headers):
+        if h.strip().lower() == "cluster":
+            cluster_idx = i
+            break
+    for row in rows:
+        if len(row) <= cluster_idx:
+            continue
+        cn = row[cluster_idx].strip()
+        if not cn:
+            continue
+        if cn not in cluster_summaries:
+            cluster_summaries[cn] = []
+            cluster_names.append(cn)
+        # 收集关键字段：ONTOLOGY, Description, p.adjust
+        ontology = row[1] if len(row) > 1 else ""
+        desc = row[3] if len(row) > 3 else ""
+        p_adj = row[7] if len(row) > 7 else "NA"
+        cluster_summaries[cn].append({
+            "ontology": ontology,
+            "description": desc,
+            "p_adjust": p_adj
+        })
+    # 每个 cluster 按 p.adjust 排序，取 top 10
+    for cn in cluster_summaries:
+        def _sort_key(item):
+            try:
+                return float(item["p_adjust"])
+            except (ValueError, TypeError):
+                return 1.0
+        cluster_summaries[cn].sort(key=_sort_key)
+        cluster_summaries[cn] = cluster_summaries[cn][:10]
+    cluster_names.sort(key=natural_sort_key)
+
     return {
         "has_data": len(cluster_images) > 0 or (len(headers) > 0),
         "cluster_images": cluster_images,
         "table_headers": headers,
-        "table_rows": rows
+        "table_rows": rows,
+        "cluster_names": cluster_names,
+        "cluster_summaries": cluster_summaries
     }

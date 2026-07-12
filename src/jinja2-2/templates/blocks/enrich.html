@@ -2,8 +2,8 @@
 <!-- Enrich — Tabs 切换各 cluster 富集图 + DataTables 表格                   -->
 <!-- ================================================================== -->
 <section class="section-container" id="section-enrich">
-    <h2 class="section-title">🔬 5. Enrichment Analysis</h2>
-    <p class="section-subtitle">GO/KEGG 富集分析结果。切换 cluster 查看对应富集图，表格支持搜索导出。</p>
+    <h2 class="section-title">🔬 5. Enrichment Analysis<button class="help-btn" onclick="showHelp('enrich')" title="查看说明">?</button></h2>
+    <p class="section-subtitle">对每个 cluster 的 cluster-specific marker 基因进行 GO/KEGG 超几何检验富集分析（clusterProfiler）。切换 cluster 查看对应富集图，表格支持搜索导出。</p>
 
     {% if enrich.has_data %}
         {% if enrich.cluster_images %}
@@ -100,4 +100,153 @@ $(document).ready(function() {
     });
 });
 </script>
+{% endif %}
+
+{# ===== AI 富集解读 ===== #}
+{% if enrich.has_data and enrich.cluster_names %}
+<div class="section-container" style="margin-top:0;">
+    <h2 class="section-title">🧠 AI 富集解读</h2>
+    <p class="section-subtitle">按 cluster 列的 unique 值分组，AI 自动生成 Markdown 表格（含 Cluster、主要富集条目、生物学意义、推测细胞类型）。</p>
+    <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-brain"></i> 🧠 AI 富集解读</span>
+        <span id="enrich-ai-save-status" class="text-success small" style="display:none;">💾 已保存</span>
+    </div>
+    <div class="card-body">
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">富集解读系统提示词</label>
+            <button class="btn btn-sm btn-outline-secondary float-end" type="button"
+                    onclick="var el=document.getElementById('enrichPromptArea');el.style.display=el.style.display==='none'?'block':'none';">
+                ✏️ 编辑
+            </button>
+            <div id="enrichPromptArea" style="display:none;">
+                <textarea class="form-control" id="enrich-ai-system-prompt" rows="8" style="font-size:13px;margin-top:8px;">你是一位植物单细胞转录组学专家。请根据以下富集分析数据，按 cluster 分组解读每个 cluster 的生物学意义。
+
+请严格按以下 Markdown 表格格式输出：
+
+| Cluster | 主要富集条目 | 生物学意义 | 推测细胞类型 |
+|---------|-------------|-----------|-------------|
+
+要求：
+- 每个 cluster 一行
+- "主要富集条目"列出该 cluster 最显著的 3-5 个 GO/KEGG 条目名称
+- "生物学意义"结合植物生物学背景解释这些富集条目的功能含义
+- "推测细胞类型"根据富集特征推测可能的细胞身份
+- 使用中文撰写</textarea>
+            </div>
+        </div>
+
+        <button id="btn-enrich-ai" class="download-btn"
+                style="background:linear-gradient(135deg,#0d6efd,#6610f2);font-size:14px;padding:12px 28px;"
+                onclick="runEnrichAIInterpretation()">
+            🤖 生成富集解读
+        </button>
+        <div id="enrich-ai-status" class="mt-2" style="display:none;text-align:center;">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            <span id="enrich-ai-status-text">AI 正在分析富集数据…</span>
+        </div>
+    </div>
+
+    <div class="ai-result-scroll" id="enrich-ai-result" style="border-top:1px solid #eef0f2;min-height:100px;">
+        <div class="chat-placeholder" id="enrich-ai-placeholder">
+            <i class="bi bi-table"></i>
+            点击「生成富集解读」按钮，AI 将按 cluster 生成解读表格<br>
+            <small>结果将自动保存到浏览器，下次打开自动恢复</small>
+        </div>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center">
+        <div class="action-buttons">
+            <button class="action-btn" onclick="copyEnrichAIResult()">📋 复制</button>
+            <button class="action-btn" onclick="downloadEnrichAIResult()">📥 下载 .md</button>
+        </div>
+        <small class="text-muted">结果已自动保存至浏览器</small>
+    </div>
+</div>
+
+<script>
+// ===== Enrich AI 解读：localStorage 持久化 =====
+(function() {
+    var saved = localStorage.getItem('phytoscope-enrich-interpretation');
+    if (saved) {
+        var rd = document.getElementById('enrich-ai-result');
+        var ph = document.getElementById('enrich-ai-placeholder');
+        if (ph) ph.style.display = 'none';
+        rd.textContent = saved;
+        document.getElementById('enrich-ai-save-status').style.display = 'inline';
+    }
+})();
+
+function saveEnrichAIResult(c) { localStorage.setItem('phytoscope-enrich-interpretation', c);
+    var el = document.getElementById('enrich-ai-save-status');
+    if (el) { el.style.display = 'inline'; setTimeout(function(){ if(el) el.style.display='none'; }, 3000); }
+}
+
+function getEnrichAIResult() {
+    var el = document.getElementById('enrich-ai-result');
+    return el ? (el.textContent||'').trim() : '';
+}
+
+function copyEnrichAIResult() {
+    var t = getEnrichAIResult(); if (!t) { alert('没有可复制的内容'); return; }
+    navigator.clipboard.writeText(t).then(function(){
+        var d = document.createElement('div');
+        d.textContent = '✅ 已复制到剪贴板';
+        Object.assign(d.style,{position:'fixed',bottom:'30px',left:'50%',transform:'translateX(-50%)',background:'#333',color:'#fff',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',zIndex:'9999',boxShadow:'0 4px 12px rgba(0,0,0,0.2)'});
+        document.body.appendChild(d);
+        setTimeout(function(){ d.style.opacity='0'; setTimeout(function(){ d.remove(); },300); },2000);
+    }).catch(function(){ alert('复制失败'); });
+}
+
+function downloadEnrichAIResult() {
+    var t = getEnrichAIResult(); if (!t) { alert('没有可导出的内容'); return; }
+    var blob = new Blob([t], {type:'text/markdown;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'phytoscope_enrich_interpretation.md';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+async function runEnrichAIInterpretation() {
+    var rd = document.getElementById('enrich-ai-result');
+    var ph = document.getElementById('enrich-ai-placeholder');
+    var st = document.getElementById('enrich-ai-status');
+    var stx = document.getElementById('enrich-ai-status-text');
+    var btn = document.getElementById('btn-enrich-ai');
+    var sp = (document.getElementById('enrich-ai-system-prompt')||{}).value || '';
+
+    var d = phytoData;
+    var species = (document.getElementById('ov-species')||{}).value || d.project.species;
+    var tissue = (document.getElementById('ov-tissue')||{}).value || d.project.tissue;
+
+    var prompt = '# 项目信息\n- 物种: ' + species + '\n- 组织: ' + tissue + '\n\n# 富集分析数据（按 cluster 分组）\n';
+    var sm = d.enrich.cluster_summaries || {};
+    var nm = d.enrich.cluster_names || [];
+    if (nm.length > 0) {
+        for (var i = 0; i < nm.length; i++) {
+            var cn = nm[i], items = sm[cn] || [];
+            prompt += '\n## ' + cn + '\n';
+            if (items.length === 0) { prompt += '（无详细条目）\n'; }
+            else { for (var j = 0; j < items.length; j++) {
+                prompt += '- [' + items[j].ontology + '] ' + items[j].description + ' (p.adjust=' + items[j].p_adjust + ')\n';
+            }}
+        }
+    }
+    prompt += '\n请按 cluster 分组，为每个 cluster 生成一行表格，包含：Cluster、主要富集条目、生物学意义、推测细胞类型。';
+
+    if (ph) ph.style.display = 'none';
+    rd.textContent = '';
+    st.style.display = 'block';
+    btn.disabled = true; btn.textContent = '⏳ 生成中…';
+
+    await callKimiAPI(sp, prompt,
+        function(fc) { rd.textContent = fc; rd.scrollTop = rd.scrollHeight; },
+        function(fc) { st.style.display = 'none'; btn.disabled = false; btn.textContent = '🤖 生成富集解读';
+            stx.textContent = '完成！'; saveEnrichAIResult(fc);
+            setTimeout(function(){ stx.textContent = 'AI 正在分析富集数据…'; }, 2000); },
+        function(em) { st.style.display = 'none'; btn.disabled = false; btn.textContent = '🤖 重新生成';
+            rd.innerHTML = '<div style="color:#e74c3c;font-weight:bold;padding:20px;">❌ ' + em + '</div>'; }
+    );
+}
+</script>
+</div>
 {% endif %}

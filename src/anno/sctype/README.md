@@ -127,7 +127,7 @@ Cluster 1 (大圆, 灰色, 面积 = 细胞数)
 | `*_sctype.png` | sctype 注释 UMAP（PNG，300 dpi） |
 | `*_sctype_scores_sorted.csv` | 每个 cluster 的最佳注释及得分 |
 | `*_nodes.csv` | Circle Packing 图的节点数据 |
-| `*_sctype_prob_clusters.csv` | **[新增]** Softmax 归一化的 cell_type × cluster 概率矩阵 |
+| `*_sctype_prob_clusters.csv` | Min-Max 归一化的 cell_type × cluster 得分矩阵 |
 | `report.txt` | 缺失标记基因的报告 |
 
 ---
@@ -149,9 +149,9 @@ sctype_cluster_matrix <- do.call("rbind", lapply(
 ))
 sctype_cluster_matrix <- t(sctype_cluster_matrix)
 
-# 2. Softmax 归一化（per cluster）
-softmax <- function(x) exp(x - max(x)) / sum(exp(x - max(x)))
-sctype_prob <- apply(sctype_cluster_matrix, 2, softmax)
+# 2. Min-Max 归一化（per cluster）→ [0,1]，线性保留相对差异，可正确处理负得分
+minmax <- function(x) (x - min(x)) / (max(x) - min(x))
+sctype_prob <- apply(sctype_cluster_matrix, 2, minmax)
 
 # 3. 保存 CSV
 write.csv(sctype_prob, "*_sctype_prob_clusters.csv", row.names = TRUE)
@@ -168,7 +168,7 @@ write.csv(sctype_prob, "*_sctype_prob_clusters.csv", row.names = TRUE)
 
 - **每行** = 一种候选细胞类型
 - **每列** = 一个 cluster
-- **每个值 ∈ [0,1]**，每列之和 = 1（可解释为"概率"）
+- **每个值 ∈ [0,1]**，线性保留得分间的相对差异（Min-Max 归一化）
 - 可直接用于 `pheatmap`、`ComplexHeatmap` 等工具绘制热图
 
 ### 使用示例（R 中绘制热图）

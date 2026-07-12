@@ -5,6 +5,10 @@
 
 ---
 
+- 0710
+  - 结果解释部分，末尾单独提供用户提示词窗口，模型反馈的内容窗口限制窗口大小，多内容用滑轨，输出的内容增加copy按钮和下载.md文件的按钮
+  - Enrich部分提供单独大模型内容解读，按cluster列的unique值来描述，形成一个md的table，包含cluster列，主要富集条目，生物学意义，推测细胞类型
+
 ## 项目概述
 
 **核心流程：** `input_rds → cluster → DEAs → MetaNeighbor → Integration_scib → Anno → Summary (jinja2)`

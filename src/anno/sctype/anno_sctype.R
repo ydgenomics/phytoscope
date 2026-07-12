@@ -165,9 +165,9 @@ sctype_cluster_matrix <- do.call("rbind", lapply(
 sctype_cluster_matrix <- t(sctype_cluster_matrix)
 colnames(sctype_cluster_matrix) <- unique(seu@meta.data[[cluster_key]])
 
-# Softmax normalization (per cluster) to [0,1]
-softmax <- function(x) exp(x - max(x)) / sum(exp(x - max(x)))
-sctype_prob <- apply(sctype_cluster_matrix, 2, softmax)
+# Min-Max normalization (per cluster) to [0,1] — preserves relative differences, handles negative scores
+minmax <- function(x) (x - min(x)) / (max(x) - min(x))
+sctype_prob <- apply(sctype_cluster_matrix, 2, minmax)
 
 # Save CSV
 write.csv(sctype_prob,
