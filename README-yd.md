@@ -59,7 +59,7 @@ batch_key, sample_key等参数
 整个jinja2的纯前端设计要能嵌入这些内容，同时也要能支持接入api，实现对文字和图像的解读。
 
 ## todo
-- sctype的得分，取消softmax
+- [x] sctype的得分，取消softmax
 - html报告和ai解读部分
 - 
 
